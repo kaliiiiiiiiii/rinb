@@ -7,7 +7,15 @@
 	"settings": {
 		"files.exclude": {
 			"**/.git": false
-		}
+		},
+		"json.schemas": [
+			{
+				"fileMatch": [
+					"rinb.json"
+				],
+				"url": "${workspaceFolder}/rinb_schema.json"
+			}
+		]
 	},
 	"extensions": {
 		"recommendations": [
@@ -27,7 +35,7 @@
 				"stopAtEntry": false,
 				"cwd": "${fileDirname}",
 				"environment": [],
-				"console": "externalTerminal",
+				"console": "integratedTerminal",
 				"preLaunchTask": "rust: cargo build",
 			}
 		]

@@ -3,12 +3,23 @@
   "title": "Config",
   "type": "object",
   "properties": {
-    "name": {
-      "description": "Name---",
-      "type": "string"
+    "arch": {
+      "$ref": "#/$defs/Arch",
+      "default": "x64"
+    },
+    "lang": {
+      "description": "Lang code, e.g. en-US",
+      "type": "string",
+      "default": "en-US"
     }
   },
-  "required": [
-    "name"
-  ]
+  "$defs": {
+    "Arch": {
+      "type": "string",
+      "enum": [
+        "x64",
+        "arm64"
+      ]
+    }
+  }
 }
