@@ -1,0 +1,43 @@
+on:
+  release:
+    types: [created]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install deps
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          . "$HOME/.cargo/env"  # add freshly installed cargo to $path
+          rustup target add --toolchain x86_64-pc-windows-gnu
+        
+      - name: Build executable
+        run: |
+          cd rinb
+          cargo build --target x86_64-pc-windows-gnu --release
+
+      - name: Rename executable to include tag
+        id: rename
+        run: |
+          tag="${{ github.event.release.tag_name }}"
+          oldPath="rinb/target/release/rinb.exe"
+          newName="rinb-$tag.exe"
+
+          mkdir -p out
+          newPath="out/$newName"
+          cp "$oldPath" "$newPath"
+
+          echo "renamed=$newPath" >> "$GITHUB_OUTPUT"
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.rename.outputs.renamed }}
+          token: ${{ secrets.GITHUB_TOKEN }}

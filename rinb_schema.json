@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Config",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Name---",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

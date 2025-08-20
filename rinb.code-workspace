@@ -8,5 +8,43 @@
 		"files.exclude": {
 			"**/.git": false
 		}
+	},
+	"extensions": {
+		"recommendations": [
+			"ms-vscode.cpptools",
+			"rust-lang.rust-analyzer"
+		]
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "Debug Rinb",
+				"type": "cppvsdbg",
+				"request": "launch",
+				"program": "${workspaceFolder}/rinb/target/debug/rinb.exe",
+				"args": ["--config", "${workspaceFolder}/rinb.json"],
+				"stopAtEntry": false,
+				"cwd": "${fileDirname}",
+				"environment": [],
+				"console": "externalTerminal",
+				"preLaunchTask": "rust: cargo build",
+			}
+		]
+	},
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"type": "process",
+				"command": "cargo",
+				"args": ["build"],
+				"group": "build",
+				"options": {
+					"cwd": "${workspaceFolder}/rinb"
+				},
+				"label": "rust: cargo build"
+			}
+		]
 	}
 }
