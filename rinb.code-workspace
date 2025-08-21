@@ -52,6 +52,16 @@
 					"cwd": "${workspaceFolder}/rinb"
 				},
 				"label": "rust: cargo build"
+			},
+			{
+				"type": "process",
+				"command": "cargo",
+				"args": ["build", "--release"],
+				"group": "build",
+				"options": {
+					"cwd": "${workspaceFolder}/rinb"
+				},
+				"label": "rust: cargo release"
 			}
 		]
 	}
