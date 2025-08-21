@@ -16,7 +16,12 @@ jobs:
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           . "$HOME/.cargo/env"  # add freshly installed cargo to $path
-          rustup target add --toolchain x86_64-pc-windows-gnu
+          rustup install stable
+          rustup target add x86_64-pc-windows-gnu
+      
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "./rinb -> target"
         
       - name: Build executable
         run: |
