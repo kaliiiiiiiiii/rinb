@@ -9,6 +9,8 @@ jobs:
       image: alpine:3.22
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
       - name: Install deps
         run: apk add cargo-audit
       
@@ -42,7 +44,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
+        with:
+            ref: ${{ github.event.release.tag_name }}
       - name: Install deps
         run: |
           if [[ "${{ matrix.target }}" == *windows* ]]; then
@@ -91,7 +94,9 @@ jobs:
         matrix: ${{ fromJSON(needs.security_audit.outputs.matrix) }}
       runs-on: ${{ contains( matrix.target, 'windows') && 'windows-latest' || 'ubuntu-latest' }}
       steps:
-        - uses: actions/checkout@v3
+        - uses: actions/checkout@v4
+          with:
+            ref: ${{ github.event.release.tag_name }}
         - uses: actions/download-artifact@v5
           with:
             name: rinb-${{matrix.target}}-${{ github.event.release.tag_name }}
