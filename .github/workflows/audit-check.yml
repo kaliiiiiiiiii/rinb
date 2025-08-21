@@ -19,5 +19,5 @@ jobs:
         run: apk add cargo-audit
       
       - name: Build executable
-        run: cargo-audit
+        run: cargo-audit audit
         working-directory: rinb
