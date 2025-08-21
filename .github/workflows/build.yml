@@ -107,6 +107,7 @@ jobs:
   test:
       needs: [security_audit,build]
       strategy:
+        fail-fast: false
         matrix: ${{ fromJSON(needs.security_audit.outputs.matrix) }}
       runs-on: ${{ contains( matrix.target, 'windows') && 'windows-latest' || 'ubuntu-latest' }}
       steps:
@@ -123,6 +124,7 @@ jobs:
     needs: [security_audit,build, test]
     strategy:
       matrix:
+        fail-fast: false
         target: ${{ fromJSON(needs.security_audit.outputs.matrix) }}
     permissions:
      contents: write
