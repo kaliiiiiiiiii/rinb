@@ -2,8 +2,8 @@ mod config;
 use config::Config;
 mod esd_downloader;
 use esd_downloader::WinEsdDownloader;
-mod wim;
-use wim::ESD;
+// mod wim;
+// use wim::ESD;
 
 use std::fs;
 

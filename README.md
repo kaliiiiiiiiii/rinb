@@ -1,7 +1,7 @@
 # RInb
 A builder and downloader for windows images written in rust
 
-[![.github/workflows/build.yml](https://github.com/kaliiiiiiiiii/rinb/actions/workflows/build.yml/badge.svg)](https://github.com/kaliiiiiiiiii/rinb/actions/workflows/build.yml)
+[![.github/workflows/build.yml](https://github.com/kaliiiiiiiiii/rinb/actions/workflows/build.yml/badge.svg)](https://github.com/kaliiiiiiiiii/rinb/actions/workflows/build.yml)[![Security audit](https://github.com/kaliiiiiiiiii/rinb/actions/workflows/audit-check.yml/badge.svg)](https://github.com/kaliiiiiiiiii/rinb/actions/workflows/audit-check.yml)
 
 # Usage
 ```bash

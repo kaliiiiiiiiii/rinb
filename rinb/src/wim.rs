@@ -1,4 +1,5 @@
 use std::path::{Path};
+use wimlib_sys;
 
 pub trait ImgPacker {
     // define trait methods here
@@ -6,6 +7,7 @@ pub trait ImgPacker {
 
 pub struct ESD {
     img_path: String,
+    image:Image,
     el_torito_boot_catalog: Option<ElToritoBootCatalog>,
     tmp_file: TempFile,
     mount_path: String,
@@ -35,7 +37,6 @@ impl ESD {
         commit_on_dispose: bool,
     ) -> Self {
         // constructor skeleton
-        todo!()
     }
 
     fn cleanup(&mut self) {
@@ -53,7 +54,10 @@ impl ESD {
         as_readonly: bool,
         mount_path: Option<&str>,
     ) -> String {
-        todo!()
+        let wiml = WimLib::try_init(InitFlags::STRICT_CAPTURE_PRIVILEGES)?;
+        let wimf = wiml.open_wim(img_path, OpenFlags::WRITE_ACCESS)?;
+        xml = wimf.xml_data()?;
+        println!("{}", xml.to_string_lossy());
     }
 
     pub fn unmount_img(mount_path: &str, commit: bool) {
