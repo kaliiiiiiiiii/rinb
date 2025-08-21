@@ -124,7 +124,6 @@ jobs:
     needs: [security_audit,build, test]
     strategy:
       matrix:
-        fail-fast: false
         target: ${{ fromJSON(needs.security_audit.outputs.matrix) }}
     permissions:
      contents: write
