@@ -106,8 +106,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [security_audit,test]
     strategy:
-      matrix:
-        target: ${{ fromJSON(needs.security_audit.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.security_audit.outputs.matrix) }}
     permissions:
      contents: write
     steps:
