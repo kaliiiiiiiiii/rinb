@@ -75,23 +75,12 @@ jobs:
       - name: Rename executable to include tag
         id: rename
         run: |
-          tag="${{ github.event.release.tag_name }}"
           oldPath="rinb/target/${{ matrix.target }}/release/rinb"
-
-          # Check if target contains "windows"
-          if [[ "${{ matrix.target }}" == *windows* ]]; then
-            oldPath="$oldPath.exe"
-            newName="rinb-${{ matrix.target }}-$tag.exe"
-          else
-            newName="rinb-${{ matrix.target }}-$tag"
-          fi
-
           mkdir -p out
-          newPath="out/$newName"
+          newPath="out/rinb-${{matrix.target}}-${{ github.event.release.tag_name }}${{ contains( matrix.target, 'windows') && '.exe' || '' }}"
           cp "$oldPath" "$newPath"
 
           echo "renamed=$newPath" >> "$GITHUB_OUTPUT"
-          echo "name=$newName" >> "$GITHUB_OUTPUT"
       
       - run: tree ./out
       
@@ -102,7 +91,6 @@ jobs:
           path: out
     outputs:
         target: ${{ matrix.target }}
-        name: ${{ steps.rename.outputs.name }}
 
   test:
       needs: [security_audit,build]
@@ -115,9 +103,10 @@ jobs:
         - uses: actions/download-artifact@v5
           with:
             name: ${{matrix.target}}
+            path: out
         - run: tree .
         - name: Test rinb
-          run: ${{ needs.build.outputs.name }} --config ./rinb.json
+          run: out/rinb-${{matrix.target}}-${{ github.event.release.tag_name }}${{ contains( matrix.target, 'windows') && '.exe' || '' }} --config ./rinb.json
 
   release:
     runs-on: ubuntu-latest
@@ -131,10 +120,11 @@ jobs:
       - uses: actions/download-artifact@v5
         with:
             name: ${{matrix.target}}
+            path: out
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ needs.build.outputs.name }}
+          files: out/rinb-${{matrix.target}}-${{ github.event.release.tag_name }}${{ contains( matrix.target, 'windows') && '.exe' || '' }}
           token: ${{ secrets.GITHUB_TOKEN }}
           body: |
             > [!WARNING]  
