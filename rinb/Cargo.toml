@@ -2,6 +2,12 @@
 name = "rinb"
 version = "0.1.0"
 edition = "2024"
+license = "Apache-2.0 OR MIT"
+documentation = "https://github.com/kaliiiiiiiiii/rinb"
+repository = "https://github.com/kaliiiiiiiiii/rinb"
+readme = "README.md"
+build = "build.rs"
+
 
 [dependencies]
 anyhow = "1.0.99"

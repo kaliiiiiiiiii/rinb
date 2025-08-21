@@ -1,0 +1,12 @@
+accepted = [
+    "Apache-2.0",
+    "MIT",
+
+    # won't generate without these
+    "Unicode-3.0",
+    "BSD-3-Clause",
+    "ISC"
+]
+targets = [
+    "x86_64-pc-windows-gnu"
+]

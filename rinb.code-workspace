@@ -46,7 +46,7 @@
 			{
 				"type": "process",
 				"command": "cargo",
-				"args": ["build"],
+				"args": ["build", "--locked"],
 				"group": "build",
 				"options": {
 					"cwd": "${workspaceFolder}/rinb"
@@ -56,7 +56,7 @@
 			{
 				"type": "process",
 				"command": "cargo",
-				"args": ["build", "--release"],
+				"args": ["build", "--release", "--locked"],
 				"group": "build",
 				"options": {
 					"cwd": "${workspaceFolder}/rinb"

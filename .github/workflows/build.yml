@@ -21,7 +21,7 @@ jobs:
       - name: Build executable
         run: |
           cd rinb
-          cargo build --target x86_64-pc-windows-gnu --release
+          cargo build --target x86_64-pc-windows-gnu --release --locked
 
       - name: Rename executable to include tag
         id: rename
