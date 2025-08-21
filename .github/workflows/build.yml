@@ -78,8 +78,6 @@ jobs:
           mkdir -p out
           newPath="out/rinb-${{matrix.target}}-${{ github.event.release.tag_name }}${{ contains( matrix.target, 'windows') && '.exe' || '' }}"
           cp "$oldPath" "$newPath"
-
-          ${{ contains( matrix.target, 'windows') && '' || 'sudo chmod +x $newPath' }}
       
       - uses: actions/upload-artifact@v4
         id: artifact-upload
@@ -103,6 +101,7 @@ jobs:
             path: out
         - name: Test rinb
           run: |
+           ${{ contains(matrix.target, 'windows') && '' || format('sudo chmod +x out/rinb-{0}-{1}', matrix.target, github.event.release.tag_name) }}
            out/rinb-${{matrix.target}}-${{ github.event.release.tag_name }}${{ contains( matrix.target, 'windows') && '.exe' || '' }} --config ./rinb.json
 
   release:

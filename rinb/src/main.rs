@@ -2,6 +2,8 @@ mod config;
 use config::Config;
 mod esd_downloader;
 use esd_downloader::WinEsdDownloader;
+mod wim;
+use wim::ESD;
 
 use std::fs;
 
@@ -29,6 +31,17 @@ fn main() -> anyhow::Result<()> {
     let tmp_esd = downloader.download_tmp(&config.lang, &config.editon, config.arch.as_str())?;
 
     println!("ESD file saved to: {}, deleting now", tmp_esd.path().display());
+
+     /* let dism = ESD::new(
+        tmp_esd.path().to_str().unwrap().to_owned(),
+        false,       // as_esd
+        Some(1),     // index
+        None,        // image_name
+        true,        // as_readonly
+        None,        // mountPath
+        false,       // commitOnDispose
+    ); */
+
     tmp_esd.close().unwrap();
 
     Ok(())

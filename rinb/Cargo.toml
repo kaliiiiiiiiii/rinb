@@ -21,6 +21,7 @@ serde = {version ="1.0.219", features = ["derive"]}
 serde_json5 = "0.2.1"
 sha1 = "0.10.6"
 tempfile = "3.21.0"
+wimlib = "0.3.1"
 
 [build-dependencies]
 anyhow = "1.0.99"
