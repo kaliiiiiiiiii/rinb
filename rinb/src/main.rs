@@ -6,6 +6,7 @@ use esd_downloader::WinEsdDownloader;
 use std::fs;
 
 use clap::Parser;
+use serde_json5;
 
 #[derive(Parser, Debug)]
 #[command(version, about = "App with JSON config")]
@@ -25,15 +26,7 @@ fn main() -> anyhow::Result<()> {
 
     let downloader = WinEsdDownloader::new(args.cache_path)?;
 
-    // Define the Windows version you want to download
-    let edition = "Professional"; // Windows 11 Pro
-    let architecture = "x64"; // 64-bit
-
-    println!("Language: {}", config.lang);
-    println!("Edition: {}", edition);
-    println!("Architecture: {}", architecture);
-
-    let tmp_esd = downloader.download_tmp(&config.lang, edition, architecture)?;
+    let tmp_esd = downloader.download_tmp(&config.lang, &config.editon, config.arch.as_str())?;
 
     println!("ESD file saved to: {}, deleting now", tmp_esd.path().display());
     tmp_esd.close().unwrap();

@@ -7,6 +7,10 @@
       "$ref": "#/$defs/Arch",
       "default": "x64"
     },
+    "editon": {
+      "type": "string",
+      "default": "Professional"
+    },
     "lang": {
       "description": "Lang code, e.g. en-US",
       "type": "string",

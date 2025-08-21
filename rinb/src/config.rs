@@ -1,4 +1,3 @@
-use clap::builder::Str;
 use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
 
@@ -12,6 +11,15 @@ fn default_lang() -> String {
 pub enum Arch {
     X64,
     Arm64,
+}
+
+impl Arch {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Arch::X64 => "x64",
+            Arch::Arm64 => "arm6",
+        }
+    }
 }
 
 impl Default for Arch {
@@ -36,6 +44,6 @@ pub struct Config {
     pub lang: String,
     #[serde(default="default_arch")]
     pub arch: Arch,
-    #[serde(default="default_arch")]
+    #[serde(default="default_edition")]
     pub editon: String
 }
