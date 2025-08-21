@@ -31,8 +31,6 @@ jobs:
               {"target":"x86_64-pc-windows-gnu"}
               {"target":"x86_64-unknown-linux-gnu"}
             ]
-      - name: test
-        run: echo ${{steps.set-matrix.outputs.matrix}}
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
