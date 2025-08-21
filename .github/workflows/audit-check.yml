@@ -3,12 +3,13 @@ permissions:
     issues: write
     checks: write
 on:
-  schedule:
-    - cron: '0 0 * * *'
   push:
     paths: 
       - '**/Cargo.toml'
       - '**/Cargo.lock'
+  schedule:
+    - cron: '0 0 * * *'
+  
 
 jobs:
   security_audit:
