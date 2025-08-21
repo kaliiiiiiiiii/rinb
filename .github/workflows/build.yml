@@ -22,7 +22,7 @@ jobs:
       - name: set-matrix
         id: set-matrix
         run: |
-            rintf 'matrix<<EOF\n%s\nEOF\n' "$MATRIX_JSON" >> $GITHUB_OUTPUT
+            printf 'matrix<<EOF\n%s\nEOF\n' "$MATRIX_JSON" >> $GITHUB_OUTPUT
         env:
           MATRIX_JSON: |
             [
