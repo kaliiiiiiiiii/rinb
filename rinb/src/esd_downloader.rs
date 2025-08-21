@@ -131,21 +131,24 @@ impl WinEsdDownloader {
             file_stem, language, edition, normalized_arch, file_info.sha1
         );
 
-        let cache_file_path = self.cache_directory.join(cache_file_name);
+        let cache_file_path = &self.cache_directory.join(cache_file_name);
 
         // Check if file exists and verify hash
         if cache_file_path.exists() {
             let existing_sha1 = self.calc_sha1(&cache_file_path)?;
+            let existing_size = fs::metadata(cache_file_path)?.len();
 
-            if existing_sha1.eq_ignore_ascii_case(&file_info.sha1) {
-                return Ok(cache_file_path);
+            if existing_sha1.eq_ignore_ascii_case(&file_info.sha1) && existing_size  == file_info.size {
+                return Ok(cache_file_path.to_path_buf());
             }
 
             eprintln!(
-                "Found existing modified or corrupted file: {}. Expected {}, but got {}. Deleting and downloading again.",
+                "Found existing modified or corrupted file: {}.\nGot SHA1: {}\nExpected:{}\nGot size:{}\nExpected:{}\n Deleting and downloading again.",
                 cache_file_path.display(),
                 file_info.sha1,
-                existing_sha1
+                existing_sha1,
+                existing_size,
+                file_info.size
             );
 
             fs::remove_file(&cache_file_path)?;
@@ -158,17 +161,21 @@ impl WinEsdDownloader {
 
         // Verify downloaded file
         let actual_sha1 = self.calc_sha1(&cache_file_path)?;
+        let existing_size = fs::metadata(cache_file_path)?.len();
 
-        if !actual_sha1.eq_ignore_ascii_case(&file_info.sha1) {
+        if !(actual_sha1.eq_ignore_ascii_case(&file_info.sha1) && existing_size  == file_info.size) {
             fs::remove_file(&cache_file_path)?;
             return Err(anyhow!(
-                "SHA-1 verification failed. Expected {}, got {}",
+                "SHA-1 verification failed for {}.\nGot SHA1: {}\nExpected:{}\nGot size:{}\nExpected:{}\n Deleting and downloading again.",
+                cache_file_path.display(),
                 file_info.sha1,
-                actual_sha1
+                actual_sha1,
+                existing_size,
+                file_info.size
             ));
         }
 
-        Ok(cache_file_path)
+        Ok(cache_file_path.to_path_buf())
     }
 
     fn find_file_info(
