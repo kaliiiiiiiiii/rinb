@@ -22,7 +22,7 @@ jobs:
       - name: set-matrix
         id: set-matrix
         run: |
-            echo 'foo<<EOF' >> $GITHUB_OUTPUT
+            echo 'matrix<<EOF' >> $GITHUB_OUTPUT
             echo "${MATRIX_JSON}" >> "$GITHUB_OUTPUT"
             echo 'EOF' >> $GITHUB_OUTPUT
         env:
@@ -31,6 +31,8 @@ jobs:
               {"target":"x86_64-pc-windows-gnu"}
               {"target":"x86_64-unknown-linux-gnu"}
             ]
+      - name: test
+        run: echo ${{steps.set-matrix.outputs.matrix}}
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
