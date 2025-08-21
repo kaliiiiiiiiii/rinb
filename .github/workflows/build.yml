@@ -6,6 +6,7 @@ permissions:
   contents: write
 
 jobs:
+
   security_audit:
     runs-on: ubuntu-latest
     container:
@@ -18,9 +19,10 @@ jobs:
       - name: Audit
         run: cargo-audit audit
         working-directory: rinb
+
   build:
     runs-on: ubuntu-latest
-    needs: security_audit
+    needs: [security_audit]
     strategy:
       fail-fast: false
       matrix:
@@ -76,16 +78,46 @@ jobs:
           cp "$oldPath" "$newPath"
 
           echo "renamed=$newPath" >> "$GITHUB_OUTPUT"
+          echo "name=$newName" >> "$GITHUB_OUTPUT"
       
-      - name: Test rinb
-        run: ${{ steps.rename.outputs.renamed }} --config ./rinb.json
+      - uses: actions/upload-artifact@v4
+        id: artifact-upload
+        with:
+          name: ${{ matrix.target }}
+          path: out
+    outputs:
+        target: ${{ matrix.target }}
+        artifact-id: ${{ steps.artifact-upload.outputs.artifact-id }}
+        name: ${{ steps.rename.outputs.name }}
 
+  test:
+      needs: [build]
+      runs-on: ${{ contains( needs.build.outputs.target, 'windows') && 'windows-latest' || 'ubuntu-latest' }}
+      outputs:
+        target: ${{ needs.build.outputs.target }}
+        artifact-id: ${{ needs.build.outputs.artifact-id }}
+        name: ${{ needs.build.outputs.name }}
+      steps:
+        - uses: actions/checkout@v3
+        - uses: actions/download-artifact@v5
+          with:
+            artifact-ids: ${{needs.build.outputs.artifact-id}}
+        - name: Test rinb
+          run: ${{ needs.build.outputs.name }} --config ./rinb.json
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+            artifact-ids: ${{needs.test.outputs.artifact-id}}
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.rename.outputs.renamed }}
+          files: ${{ needs.test.outputs.name }}
           token: ${{ secrets.GITHUB_TOKEN }}
           body: |
             > [!WARNING]  
-            > Only rinb-x86_64-pc-windows-gnu-vX.X.X.X.X.exe has locked dependencies and is tested.
+            > Only `rinb-x86_64-pc-windows-gnu-vX.X.X.X.X.exe` has locked dependencies and is tested.
           append_body: true
