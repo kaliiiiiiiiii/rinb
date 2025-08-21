@@ -21,7 +21,8 @@ jobs:
       - name: set-matrix
         id: set-matrix
         run: |
-          echo "::set-output name=matrix::$(jq -n '[{"target":"x86_64-pc-windows-gnu"},{"target":"x86_64-unknown-linux-gnu"}]')"
+            matrix=$(jq -n '[{"target":"x86_64-pc-windows-gnu"},{"target":"x86_64-unknown-linux-gnu"}]')
+            echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   build:
     runs-on: ubuntu-latest
