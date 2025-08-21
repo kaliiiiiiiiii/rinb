@@ -5,6 +5,18 @@ cd rinb
 cargo build --release --locked
 ```
 
+# Audit Cargo.lock
+Install dependencies
+```bash
+cargo install cargo-audit --locked
+```
+
+Audit
+```bash
+cd rinb
+cargo audit
+```
+
 # Update third-party licences
 Install dependencies
 ```bash

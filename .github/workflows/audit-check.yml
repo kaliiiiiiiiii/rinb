@@ -1,8 +1,4 @@
 name: Security audit
-permissions:
-    issues: write
-    checks: write
-    contents: read
 on:
   push:
     paths: 
@@ -12,12 +8,16 @@ on:
   schedule:
     - cron: '0 0 * * *'
   
-
 jobs:
   security_audit:
     runs-on: ubuntu-latest
+    container:
+      image: alpine:3.22
     steps:
       - uses: actions/checkout@v4
-      - uses: rustsec/audit-check@v2.0.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install deps
+        run: apk add cargo-audit
+      
+      - name: Build executable
+        run: cargo-audit
+        working-directory: rinb
