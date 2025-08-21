@@ -18,6 +18,6 @@ jobs:
       - name: Install deps
         run: apk add cargo-audit
       
-      - name: Build executable
+      - name: Audit
         run: cargo-audit audit
         working-directory: rinb
