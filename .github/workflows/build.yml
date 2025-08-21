@@ -75,7 +75,7 @@ jobs:
       - name: Rename executable to include tag
         id: rename
         run: |
-          oldPath="rinb/target/${{ matrix.target }}/release/rinb"
+          oldPath="rinb/target/${{ matrix.target }}/release/rinb${{ contains( matrix.target, 'windows') && '.exe' || '' }}"
           mkdir -p out
           newPath="out/rinb-${{matrix.target}}-${{ github.event.release.tag_name }}${{ contains( matrix.target, 'windows') && '.exe' || '' }}"
           cp "$oldPath" "$newPath"
