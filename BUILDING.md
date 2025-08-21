@@ -1,8 +1,13 @@
 # build rinb
+
+Install dependency
+```bash
+rustup target add x86_64-pc-windows-gnu
+```
 And generate rinb_schema.json
 ```bash
 cd rinb
-cargo build --release --locked
+cargo build --target x86_64-pc-windows-gnu --release --locked
 ```
 
 # Audit Cargo.lock

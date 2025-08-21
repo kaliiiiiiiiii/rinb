@@ -30,10 +30,10 @@
 				"name": "Debug Rinb",
 				"type": "cppvsdbg",
 				"request": "launch",
-				"program": "${workspaceFolder}/rinb/target/debug/rinb.exe",
+				"program": "${workspaceFolder}/rinb/target/x86_64-pc-windows-gnu/debug/rinb.exe",
 				"args": ["--config", "${workspaceFolder}/rinb.json"],
 				"stopAtEntry": false,
-				"cwd": "${fileDirname}",
+				"cwd": "${workspaceFolder}",
 				"environment": [],
 				"console": "integratedTerminal",
 				"preLaunchTask": "rust: cargo build",
@@ -46,7 +46,7 @@
 			{
 				"type": "process",
 				"command": "cargo",
-				"args": ["build", "--locked"],
+				"args": ["build", "--locked", "--target","x86_64-pc-windows-gnu"],
 				"group": "build",
 				"options": {
 					"cwd": "${workspaceFolder}/rinb"
@@ -56,7 +56,7 @@
 			{
 				"type": "process",
 				"command": "cargo",
-				"args": ["build", "--release", "--locked"],
+				"args": ["build","--target","x86_64-pc-windows-gnu", "--release", "--locked"],
 				"group": "build",
 				"options": {
 					"cwd": "${workspaceFolder}/rinb"

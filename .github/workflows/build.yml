@@ -8,41 +8,71 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-pc-windows-gnu
+          - x86_64-unknown-linux-gnu
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Install deps
         run: |
+          if [[ "${{ matrix.target }}" == *windows* ]]; then
+            sudo apt-get install mingw-w64
+          fi
+          
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           . "$HOME/.cargo/env"  # add freshly installed cargo to $path
           rustup install stable
-          rustup target add x86_64-pc-windows-gnu
+          rustup target add ${{ matrix.target }}
       
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: "./rinb -> target"
+          workspaces: "./rinb -> ${{ matrix.target }}"
+          prefix-key: "v0-rust-${{ matrix.target }}"
         
       - name: Build executable
         run: |
-          cd rinb
-          cargo build --target x86_64-pc-windows-gnu --release --locked
+          if [[ "${{ matrix.target }}" == *windows* ]]; then
+            cargo build --target ${{ matrix.target }} --release --locked
+          else
+            cargo build --target ${{ matrix.target }} --release
+          fi
+        working-directory: "rinb"
+          
 
       - name: Rename executable to include tag
         id: rename
         run: |
           tag="${{ github.event.release.tag_name }}"
-          oldPath="rinb/target/release/rinb.exe"
-          newName="rinb-$tag.exe"
+          oldPath="rinb/target/${{ matrix.target }}/release/rinb"
+
+          # Check if target contains "windows"
+          if [[ "${{ matrix.target }}" == *windows* ]]; then
+            oldPath="$oldPath.exe"
+            newName="rinb-${{ matrix.target }}-$tag.exe"
+          else
+            newName="rinb-${{ matrix.target }}-$tag"
+          fi
 
           mkdir -p out
           newPath="out/$newName"
           cp "$oldPath" "$newPath"
 
           echo "renamed=$newPath" >> "$GITHUB_OUTPUT"
+      
+      - name: Test rinb
+        run: ${{ steps.rename.outputs.renamed }} --config ./rinb.json
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.rename.outputs.renamed }}
           token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            > [!WARNING]  
+            > Only rinb-x86_64-pc-windows-gnu-vX.X.X.X.X.exe has locked dependencies and is tested.
+          append_body: true
