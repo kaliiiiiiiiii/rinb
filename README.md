@@ -1,6 +1,8 @@
 # RInb
 A builder and downloader for windows images written in rust
 
+[![.github/workflows/build.yml](https://github.com/kaliiiiiiiiii/rinb/actions/workflows/build.yml/badge.svg)](https://github.com/kaliiiiiiiiii/rinb/actions/workflows/build.yml)
+
 # Usage
 ```bash
 Usage: rinb.exe [OPTIONS] --config <CONFIG>

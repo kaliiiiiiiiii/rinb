@@ -2,15 +2,11 @@ on:
   release:
     types: [created]
 
-
-
 jobs:
-
   security_audit:
     runs-on: ubuntu-latest
     container:
       image: alpine:3.22
-    
     steps:
       - uses: actions/checkout@v4
       - name: Install deps
@@ -80,17 +76,13 @@ jobs:
           newPath="out/rinb-${{matrix.target}}-${{ github.event.release.tag_name }}${{ contains( matrix.target, 'windows') && '.exe' || '' }}"
           cp "$oldPath" "$newPath"
 
-          echo "renamed=$newPath" >> "$GITHUB_OUTPUT"
-      
-      - run: tree ./out
+          ${{ contains( matrix.target, 'windows') && '' || 'sudo chmod +x $newPath' }}
       
       - uses: actions/upload-artifact@v4
         id: artifact-upload
         with:
-          name: ${{ matrix.target }}
+          name: rinb-${{matrix.target}}-${{ github.event.release.tag_name }}
           path: out
-    outputs:
-        target: ${{ matrix.target }}
 
   test:
       needs: [security_audit,build]
@@ -102,11 +94,11 @@ jobs:
         - uses: actions/checkout@v3
         - uses: actions/download-artifact@v5
           with:
-            name: ${{matrix.target}}
+            name: rinb-${{matrix.target}}-${{ github.event.release.tag_name }}
             path: out
-        - run: tree .
         - name: Test rinb
-          run: out/rinb-${{matrix.target}}-${{ github.event.release.tag_name }}${{ contains( matrix.target, 'windows') && '.exe' || '' }} --config ./rinb.json
+          run: |
+           out/rinb-${{matrix.target}}-${{ github.event.release.tag_name }}${{ contains( matrix.target, 'windows') && '.exe' || '' }} --config ./rinb.json
 
   release:
     runs-on: ubuntu-latest
@@ -119,7 +111,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v5
         with:
-            name: ${{matrix.target}}
+            name: rinb-${{matrix.target}}-${{ github.event.release.tag_name }}
             path: out
       - name: Upload to release
         uses: softprops/action-gh-release@v2
