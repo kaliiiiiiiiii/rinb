@@ -12,6 +12,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.release.tag_name }}
+          submodules: true
       - name: Install deps
         run: apk add cargo-audit
       
@@ -46,6 +47,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
             ref: ${{ github.event.release.tag_name }}
+            submodules: true
       - name: Install deps
         run: |
           if [[ "${{ matrix.target }}" == *windows* ]]; then
@@ -94,6 +96,7 @@ jobs:
         - uses: actions/checkout@v4
           with:
             ref: ${{ github.event.release.tag_name }}
+            submodules: true
         - uses: actions/download-artifact@v5
           with:
             name: rinb-${{matrix.target}}-${{ github.event.release.tag_name }}
