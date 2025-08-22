@@ -1,0 +1,3 @@
+[submodule "rinb/toolsnt/toolsnt"]
+	path = rinb/toolsnt/toolsnt
+	url = https://codeberg.org/erin/toolsnt
