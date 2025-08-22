@@ -2,7 +2,7 @@
 name = "rinb"
 version = "0.1.0"
 edition = "2024"
-license = "Apache-2.0 OR MIT"
+license = "EUPL-1.2"
 documentation = "https://github.com/kaliiiiiiiiii/rinb"
 repository = "https://github.com/kaliiiiiiiiii/rinb"
 readme = "README.md"

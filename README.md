@@ -23,12 +23,15 @@ See [BUILDING.md](./BUILDING.md)
 
 ## Licence
 
-This project is licensed under the [Apache-2.0 license](./LICENSE.txt).
+This project is licensed under the [EUPL-1.2](./LICENSE.txt).
 
 ### Third-party software
 This project depends on third-party crates under various licenses 
 (including MIT, Apache-2.0, BSD-3-Clause, ISC, Unicode, etc.).  
 A complete list of licenses is available in [NOTICE.md](./NOTICE.md).
+
+Especially take note of
+- [NOTICE.md#wimlib](./NOTICE.md#wimlib)
 
 # References
 - [cargo-about-markdown-template.hbs](https://github.com/takkt-ag/persevere/blob/6e0f40d47a8ce5dd5ec83bc102053996f59b7291/.tools/cargo-about-markdown-template.hbs)
