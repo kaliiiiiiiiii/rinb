@@ -14,6 +14,10 @@ jobs:
     container:
       image: alpine:3.22
     steps:
+      - name: Update git
+        run: |
+          apk update
+          apk add --no-cache git bash ca-certificates
       - uses: actions/checkout@v4
         with: 
           submodules: true
