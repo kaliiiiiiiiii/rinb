@@ -84,6 +84,8 @@ jobs:
           mkdir -p out
           newPath="out/rinb-${{matrix.target}}-${{ github.event.release.tag_name }}${{ contains( matrix.target, 'windows') && '.exe' || '' }}"
           cp "$oldPath" "$newPath"
+          cp NOTICE.md out/NOTICE.md
+          cp LICENSE.txt out/LICENSE.txt
       
       - uses: actions/upload-artifact@v4
         id: artifact-upload
@@ -125,5 +127,8 @@ jobs:
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
-          files: out/rinb-${{matrix.target}}-${{ github.event.release.tag_name }}${{ contains( matrix.target, 'windows') && '.exe' || '' }}
+          files: |
+            out/rinb-${{matrix.target}}-${{ github.event.release.tag_name }}${{ contains( matrix.target, 'windows') && '.exe' || '' }}
+            out/LICENSE.txt
+            out/NOTICE.md
           token: ${{ secrets.GITHUB_TOKEN }}
