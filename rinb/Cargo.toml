@@ -22,8 +22,6 @@ serde_json5 = "0.2.1"
 sha1 = "0.10.6"
 tempfile = "3.21.0"
 wimlib = {path="../toolsnt/wimlib", features = ["mount", "bundled"], default-features = false}
-# pacman -S base-devel mingw-w64-x86_64-toolchain
-# pacman -S diffutils
 
 [build-dependencies]
 anyhow = "1.0.99"
