@@ -1,5 +1,5 @@
 use std::path::{Path};
-use wimlib_sys;
+use wimlib::{Image};
 
 pub trait ImgPacker {
     // define trait methods here

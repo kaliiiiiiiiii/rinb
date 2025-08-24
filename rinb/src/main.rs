@@ -2,8 +2,9 @@ mod config;
 use config::Config;
 mod esd_downloader;
 use esd_downloader::WinEsdDownloader;
-// mod wim;
-// use wim::ESD;
+use wimlib::{WimLib, InitFlags, OpenFlags, string::TStr};
+
+use widestring::{error::NulError, U16CStr, U16CString};
 
 use std::fs;
 
@@ -20,6 +21,14 @@ struct Args {
     cache_path: String,
 }
 
+pub fn tstr_from_str(s: &str) -> Result<Box<TStr>, NulError<u16>> {
+    // Convert &str → UTF-16 nul-terminated CString
+    let u16_cstring = U16CString::from_str(s)?;
+    let boxed = u16_cstring.into_boxed_ucstr();
+    // Safety: U16CStr and TStr are repr(transparent)
+    Ok(unsafe { Box::from_raw(Box::into_raw(boxed) as *mut TStr) })
+}
+
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
@@ -30,9 +39,12 @@ fn main() -> anyhow::Result<()> {
 
     let tmp_esd = downloader.download_tmp(&config.lang, &config.editon, config.arch.as_str())?;
 
-    println!("ESD file saved to: {}, deleting now", tmp_esd.path().display());
+    println!(
+        "ESD file saved to: {}, deleting now",
+        tmp_esd.path().display()
+    );
 
-     /* let dism = ESD::new(
+    /* let dism = ESD::new(
         tmp_esd.path().to_str().unwrap().to_owned(),
         false,       // as_esd
         Some(1),     // index
@@ -41,6 +53,13 @@ fn main() -> anyhow::Result<()> {
         None,        // mountPath
         false,       // commitOnDispose
     ); */
+
+    let wiml = WimLib::try_init(InitFlags::STRICT_CAPTURE_PRIVILEGES).ok().unwrap();
+    let path = tmp_esd.path().to_str().unwrap();
+    
+    let wimf = wiml.open_wim(&tstr_from_str(path).unwrap(), OpenFlags::WRITE_ACCESS)?;
+    let xml = wimf.xml_data()?;
+    print!("{}",xml.display());
 
     tmp_esd.close().unwrap();
 
