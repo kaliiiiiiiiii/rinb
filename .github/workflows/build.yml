@@ -87,7 +87,6 @@ jobs:
           cp "$oldPath" "$newPath"
           cp NOTICE.md out/NOTICE.md
           cp LICENSE.txt out/LICENSE.txt
-          ${{ contains( matrix.target, 'windows') && '.exe' || '' }}"
       
       - uses: actions/upload-artifact@v4
         id: artifact-upload
