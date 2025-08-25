@@ -24,7 +24,7 @@
 		"files.associations": {
 			"stdbool.h": "c"
 		},
-		"rust-analyzer.cargo.target":"x86_64-pc-windows-msvc"
+		"rust-analyzer.cargo.target":"x86_64-pc-windows-gnu"
 	},
 	"extensions": {
 		"recommendations": [
@@ -81,7 +81,10 @@
 				],
 				"group": "build",
 				"options": {
-					"cwd": "${workspaceFolder:rinb}/rinb"
+					"cwd": "${workspaceFolder:rinb}/rinb",
+					"env": {
+						"CARGO_TARGET_DIR":"${workspaceFolder:rinb}/rinb/target"
+					}
 				},
 				"label": "rust: cargo build msvc"
 			},
@@ -97,7 +100,10 @@
 				],
 				"group": "build",
 				"options": {
-					"cwd": "${workspaceFolder:rinb}/rinb"
+					"cwd": "${workspaceFolder:rinb}/rinb",
+					"env": {
+						"CARGO_TARGET_DIR":"${workspaceFolder:rinb}/rinb/target"
+					}
 				},
 				"label": "rust: cargo build gnu"
 			},
@@ -114,7 +120,10 @@
 				],
 				"group": "build",
 				"options": {
-					"cwd": "${workspaceFolder:rinb}/rinb"
+					"cwd": "${workspaceFolder:rinb}/rinb",
+					"env": {
+						"CARGO_TARGET_DIR":"${workspaceFolder:rinb}/rinb/target"
+					}
 				},
 				"label": "rust: cargo release"
 			}

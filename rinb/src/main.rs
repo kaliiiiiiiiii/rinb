@@ -2,9 +2,9 @@ mod config;
 use config::Config;
 mod esd_downloader;
 use esd_downloader::WinEsdDownloader;
-use wimlib::{WimLib, InitFlags, OpenFlags, string::TStr};
+use wimlib::{string::TStr, OpenFlags, WimLib};
 
-use widestring::{error::NulError, U16CStr, U16CString};
+use widestring::{error::NulError, U16CString};
 
 use std::fs;
 
@@ -37,11 +37,11 @@ fn main() -> anyhow::Result<()> {
 
     let downloader = WinEsdDownloader::new(args.cache_path)?;
 
-    let tmp_esd = downloader.download_tmp(&config.lang, &config.editon, config.arch.as_str())?;
+    let esd = downloader.download(&config.lang, &config.editon, config.arch.as_str())?;
 
     println!(
-        "ESD file saved to: {}, deleting now",
-        tmp_esd.path().display()
+        "ESD file downloaded to {}",
+        esd.display()
     );
 
     /* let dism = ESD::new(
@@ -54,14 +54,14 @@ fn main() -> anyhow::Result<()> {
         false,       // commitOnDispose
     ); */
 
-    let wiml = WimLib::try_init(InitFlags::STRICT_CAPTURE_PRIVILEGES).ok().unwrap();
-    let path = tmp_esd.path().to_str().unwrap();
+    let wiml = WimLib::default();
     
-    let wimf = wiml.open_wim(&tstr_from_str(path).unwrap(), OpenFlags::WRITE_ACCESS)?;
+    let wimf = wiml.open_wim(&tstr_from_str(esd.to_str().unwrap()).unwrap(), OpenFlags::WRITE_ACCESS)?;
     let xml = wimf.xml_data()?;
-    print!("{}",xml.display());
+    let xml_str = xml.to_string()?;
+    print!("{}",xml_str);
 
-    tmp_esd.close().unwrap();
+    // tmp_esd.close().unwrap();
 
     Ok(())
 }
