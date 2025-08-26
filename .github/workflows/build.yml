@@ -128,10 +128,17 @@ jobs:
             name: rinb-${{matrix.target}}-${{ github.event.release.tag_name }}
             path: out
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.3.2
         with:
           files: |
             out/rinb-${{matrix.target}}-${{ github.event.release.tag_name }}${{ contains( matrix.target, 'windows') && '.exe' || '' }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload licences
+        uses: softprops/action-gh-release@v2.3.2
+        with:
+          files: |
             out/LICENSE.txt
             out/NOTICE.md
           token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true # waiting for https://github.com/softprops/action-gh-release/commit/605f567f95cfaf9465d68c7dbf509f374691fb12 to be released
+          
