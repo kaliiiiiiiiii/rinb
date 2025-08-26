@@ -23,6 +23,7 @@ sha1 = "0.10.6"
 tempfile = "3.21.0"
 widestring = "1.2.0"
 wimlib = {path="../toolsnt/wimlib", features = ["mount", "bundled"], default-features = false}
+# winapi = {version="0.3.9",features = ["winbase", "winnt", "memoryapi"] }
 
 [build-dependencies]
 anyhow = "1.0.99"

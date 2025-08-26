@@ -1,12 +1,12 @@
 use std::fs::{self, File};
-use std::io::{self, Cursor, Read};
+use std::io::{self, Cursor, Read, BufReader};
 use std::path::{Path, PathBuf};
 use std::string::String;
 
 use anyhow::{Result, anyhow};
+use roxmltree::Document;
 use sha1::{Digest, Sha1};
 use tempfile::NamedTempFile;
-use roxmltree::Document;
 
 #[derive(Debug)]
 pub struct FileInfo {
@@ -44,7 +44,7 @@ fn find_files(xml: &str) -> Vec<FileInfo> {
             language: get_text("Language"),
             edition: get_text("Edition"),
             architecture: get_text("Architecture"),
-            size:size,
+            size: size,
             sha1: get_text("Sha1"),
             file_path: get_text("FilePath"),
         });
@@ -53,18 +53,17 @@ fn find_files(xml: &str) -> Vec<FileInfo> {
     result
 }
 
-
 pub fn extract_cab_file(
-        _data: &[u8],
-        _filename: &str,
-    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        let cursor = Cursor::new(_data);
-        let mut cabinet = cab::Cabinet::new(cursor)?;
-        let mut reader = cabinet.read_file(_filename)?;
-        let mut buffer = Vec::new();
-        reader.read_to_end(&mut buffer)?;
-        Ok(buffer)
-    }
+    _data: &[u8],
+    _filename: &str,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let cursor = Cursor::new(_data);
+    let mut cabinet = cab::Cabinet::new(cursor)?;
+    let mut reader = cabinet.read_file(_filename)?;
+    let mut buffer = Vec::new();
+    reader.read_to_end(&mut buffer)?;
+    Ok(buffer)
+}
 
 pub struct WinEsdDownloader {
     cache_directory: PathBuf,
@@ -87,7 +86,6 @@ impl WinEsdDownloader {
         let xml_bytes = extract_cab_file(&response, "products.xml").unwrap();
         let xml_str = String::from_utf8(xml_bytes.clone())?;
         let files = find_files(&xml_str);
-        
 
         Ok(Self {
             cache_directory,
@@ -138,7 +136,9 @@ impl WinEsdDownloader {
             let existing_sha1 = self.calc_sha1(&cache_file_path)?;
             let existing_size = fs::metadata(cache_file_path)?.len();
 
-            if existing_sha1.eq_ignore_ascii_case(&file_info.sha1) && existing_size  == file_info.size {
+            if existing_sha1.eq_ignore_ascii_case(&file_info.sha1)
+                && existing_size == file_info.size
+            {
                 return Ok(cache_file_path.to_path_buf());
             }
 
@@ -163,7 +163,7 @@ impl WinEsdDownloader {
         let actual_sha1 = self.calc_sha1(&cache_file_path)?;
         let existing_size = fs::metadata(cache_file_path)?.len();
 
-        if !(actual_sha1.eq_ignore_ascii_case(&file_info.sha1) && existing_size  == file_info.size) {
+        if !(actual_sha1.eq_ignore_ascii_case(&file_info.sha1) && existing_size == file_info.size) {
             fs::remove_file(&cache_file_path)?;
             return Err(anyhow!(
                 "SHA-1 verification failed for {}.\nGot SHA1: {}\nExpected:{}\nGot size:{}\nExpected:{}\n Deleting and downloading again.",
@@ -208,12 +208,13 @@ impl WinEsdDownloader {
     }
 
     fn calc_sha1(&self, file_path: &Path) -> Result<String> {
-        let mut file = File::open(file_path)?;
+        let file = File::open(file_path)?;
+        let mut reader = BufReader::with_capacity(65536, file); // 64 KB buffer
         let mut hasher = Sha1::new();
-        let mut buffer = [0; 8192];
+        let mut buffer = [0; 65536];
 
         loop {
-            let bytes_read = file.read(&mut buffer)?;
+            let bytes_read = reader.read(&mut buffer)?;
             if bytes_read == 0 {
                 break;
             }

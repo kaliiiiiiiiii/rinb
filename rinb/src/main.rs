@@ -2,8 +2,7 @@ mod config;
 use config::Config;
 mod esd_downloader;
 use esd_downloader::WinEsdDownloader;
-use wimlib::{string::TStr, OpenFlags, WimLib};
-
+use wimlib::{OpenFlags, WimLib, string::TStr};
 use std::fs;
 
 use clap::Parser;
@@ -29,10 +28,7 @@ fn main() -> anyhow::Result<()> {
 
     let esd = downloader.download(&config.lang, &config.editon, config.arch.as_str())?;
 
-    println!(
-        "ESD file downloaded to {}",
-        esd.display()
-    );
+    println!("ESD file downloaded to {}", esd.display());
 
     /* let dism = ESD::new(
         tmp_esd.path().to_str().unwrap().to_owned(),
@@ -45,13 +41,11 @@ fn main() -> anyhow::Result<()> {
     ); */
 
     let wiml = WimLib::default();
-    
+
     let wimf = wiml.open_wim(&TStr::from_path(esd).unwrap(), OpenFlags::WRITE_ACCESS)?;
     let xml = wimf.xml_data()?;
-    let xml_str = xml.to_string()?;
-    print!("{}",xml_str);
 
-    // tmp_esd.close().unwrap();
+    print!("{}",xml.to_string_lossy());
 
     Ok(())
 }
