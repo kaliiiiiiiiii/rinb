@@ -24,7 +24,13 @@
 		"files.associations": {
 			"stdbool.h": "c"
 		},
-		"rust-analyzer.cargo.target":"x86_64-pc-windows-gnu"
+		"rust-analyzer.cargo.target": "x86_64-pc-windows-gnu",
+		"terminal.integrated.env.windows": {
+			"CARGO_TARGET_DIR": "${workspaceFolder:rinb}/rinb/target"
+		},
+		"terminal.integrated.env.linux": {
+			"CARGO_TARGET_DIR": "${workspaceFolder:rinb}/rinb/target"
+		}
 	},
 	"extensions": {
 		"recommendations": [
@@ -83,7 +89,7 @@
 				"options": {
 					"cwd": "${workspaceFolder:rinb}/rinb",
 					"env": {
-						"CARGO_TARGET_DIR":"${workspaceFolder:rinb}/rinb/target"
+						"CARGO_TARGET_DIR": "${workspaceFolder:rinb}/rinb/target"
 					}
 				},
 				"label": "rust: cargo build msvc"
@@ -102,7 +108,7 @@
 				"options": {
 					"cwd": "${workspaceFolder:rinb}/rinb",
 					"env": {
-						"CARGO_TARGET_DIR":"${workspaceFolder:rinb}/rinb/target"
+						"CARGO_TARGET_DIR": "${workspaceFolder:rinb}/rinb/target"
 					}
 				},
 				"label": "rust: cargo build gnu"
@@ -122,7 +128,7 @@
 				"options": {
 					"cwd": "${workspaceFolder:rinb}/rinb",
 					"env": {
-						"CARGO_TARGET_DIR":"${workspaceFolder:rinb}/rinb/target"
+						"CARGO_TARGET_DIR": "${workspaceFolder:rinb}/rinb/target"
 					}
 				},
 				"label": "rust: cargo release"

@@ -17,6 +17,7 @@ A sample config file can be found at [rinb.json](rinb.json) ([json-schema](rinb_
 
 # TODO
 - use [wimlib](https://codeberg.org/erin/toolsnt/src/branch/trunk/wimlib) and [hadris-iso](https://crates.io/crates/hadris-iso) to create a bootable iso for testing
+- support other targets than ["x86_64-pc-windows-gnu", "x86_64-unknown-linux-gnu"]
 
 # Building
 See [BUILDING.md](./BUILDING.md)
