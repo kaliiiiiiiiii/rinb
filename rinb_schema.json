@@ -5,7 +5,7 @@
   "properties": {
     "arch": {
       "$ref": "#/$defs/Arch",
-      "default": "x64"
+      "default": "amd64"
     },
     "editon": {
       "type": "string",
@@ -21,7 +21,7 @@
     "Arch": {
       "type": "string",
       "enum": [
-        "x64",
+        "amd64",
         "arm64"
       ]
     }

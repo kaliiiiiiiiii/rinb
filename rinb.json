@@ -1,6 +1,6 @@
 {
   "$schema": "./rinb_schema.json",
   "lang": "en-US",
-  "arch": "x64",
+  "arch": "amd64",
   "edition": "Professional"
 }

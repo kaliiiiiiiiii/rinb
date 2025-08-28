@@ -25,12 +25,15 @@
 			"stdbool.h": "c"
 		},
 		"rust-analyzer.cargo.target": "x86_64-pc-windows-gnu",
-		"terminal.integrated.env.windows": {
-			"CARGO_TARGET_DIR": "${workspaceFolder:rinb}/rinb/target"
+		"rust-analyzer.cargo.extraEnv": {
+			"CARGO_TARGET_DIR":"target",
+			"WIMLIB_NO_PKG_CONFIG":""
 		},
 		"terminal.integrated.env.linux": {
 			"CARGO_TARGET_DIR": "${workspaceFolder:rinb}/rinb/target"
-		}
+		},
+		"terminal.integrated.confirmOnKill": "always",
+		"terminal.integrated.confirmOnExit": "always"
 	},
 	"extensions": {
 		"recommendations": [
@@ -54,7 +57,7 @@
 				"cwd": "${workspaceFolder:rinb}",
 				"environment": [],
 				"console": "integratedTerminal",
-				"preLaunchTask": "rust: cargo build msvc",
+				"preLaunchTask": "rust: cargo build msvc"
 			},
 			{
 				"name": "Debug Rinb gnu",
