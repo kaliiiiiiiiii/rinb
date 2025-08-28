@@ -15,6 +15,10 @@
       "description": "Lang code, e.g. en-US",
       "type": "string",
       "default": "en-US"
+    },
+    "version": {
+      "$ref": "#/$defs/WinVer",
+      "default": "11"
     }
   },
   "$defs": {
@@ -23,6 +27,13 @@
       "enum": [
         "amd64",
         "arm64"
+      ]
+    },
+    "WinVer": {
+      "type": "string",
+      "enum": [
+        "10",
+        "11"
       ]
     }
   }

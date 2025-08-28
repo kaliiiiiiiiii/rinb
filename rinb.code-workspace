@@ -16,7 +16,7 @@
 		"json.schemas": [
 			{
 				"fileMatch": [
-					"rinb.json"
+					"${workspaceFolder:rinb}/rinb.json"
 				],
 				"url": "${workspaceFolder:rinb}/rinb_schema.json"
 			}
@@ -25,9 +25,12 @@
 			"stdbool.h": "c"
 		},
 		"rust-analyzer.cargo.target": "x86_64-pc-windows-gnu",
+		"rust-analyzer.cargo.extraArgs": [
+			"+stable-x86_64-pc-windows-gnu"
+		],
 		"rust-analyzer.cargo.extraEnv": {
-			"CARGO_TARGET_DIR":"target",
-			"WIMLIB_NO_PKG_CONFIG":""
+			"CARGO_TARGET_DIR": "target",
+			"WIMLIB_NO_PKG_CONFIG": ""
 		},
 		"terminal.integrated.env.linux": {
 			"CARGO_TARGET_DIR": "${workspaceFolder:rinb}/rinb/target"
@@ -82,6 +85,7 @@
 				"type": "process",
 				"command": "cargo",
 				"args": [
+					"+stable-x86_64-pc-windows-msvc",
 					"build",
 					"--locked",
 					"--target",
@@ -101,6 +105,7 @@
 				"type": "process",
 				"command": "cargo",
 				"args": [
+					"+stable-x86_64-pc-windows-gnu",
 					"build",
 					"--locked",
 					"--target",
@@ -120,6 +125,7 @@
 				"type": "process",
 				"command": "cargo",
 				"args": [
+					"+stable-x86_64-pc-windows-gnu",
 					"build",
 					"--target",
 					"x86_64-pc-windows-gnu",
@@ -135,6 +141,18 @@
 					}
 				},
 				"label": "rust: cargo release"
+			},
+			{
+				"type": "shell",
+				"label": "flamegraph (admin)",
+				"command": "Start-Process",
+				"args": [
+					"-Verb", "RunAs", "-Wait", "powershell", "-ArgumentList", "-NoExit -WindowStyle Maximized cd \"${workspaceFolder:rinb}/rinb \";setx CARGO_PROFILE_RELEASE_DEBUG true;setx CARGO_TARGET_DIR \"${workspaceFolder:rinb}/rinb/target\";setx CARGO_TARGET_DIR \"${workspaceFolder:rinb}/rinb/target; setx TARGET;setx PROFILE release; \";Clear-Host; cargo flamegraph -v --bin rinb -- --config  \"${workspaceFolder:rinb}/rinb.json\"; Read-Host flamegraph Exited with $LASTEXITCODE, Press ENTER to exit or CTRL+c to stay in console; exit",
+					 
+				],
+				"group": "test",
+				"hide": true,
+				"isBackground": true,
 			}
 		]
 	}

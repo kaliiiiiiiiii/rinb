@@ -1,9 +1,11 @@
+use crate::config::WinVer;
+
 use std::fs::{self, File};
 use std::io::{self, BufReader, Cursor, Read};
 use std::path::{Path, PathBuf};
 use std::string::String;
 
-use anyhow::{Result, anyhow};
+use anyhow::{Error, Ok, Result, anyhow};
 use roxmltree::Document;
 use sha1::{Digest, Sha1};
 use tempfile::NamedTempFile;
@@ -21,8 +23,9 @@ pub struct FileInfo {
 }
 
 // Traversal function
-fn find_files(xml: &str) -> Vec<FileInfo> {
-	let doc = Document::parse(xml).unwrap();
+
+fn find_files(xml: &str) -> Result<Vec<FileInfo>, Error> {
+	let doc = Document::parse(xml)?;
 	let mut result = Vec::new();
 
 	// Traverse all <File> nodes
@@ -44,19 +47,16 @@ fn find_files(xml: &str) -> Vec<FileInfo> {
 			language: get_text("Language"),
 			edition: get_text("Edition"),
 			architecture: get_text("Architecture"),
-			size: size,
+			size,
 			sha1: get_text("Sha1"),
 			file_path: get_text("FilePath"),
 		});
 	}
 
-	result
+	Ok(result)
 }
 
-pub fn extract_cab_file(
-	_data: &[u8],
-	_filename: &str,
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+pub fn extract_cab_file(_data: &[u8], _filename: &str) -> Result<Vec<u8>, Error> {
 	let cursor = Cursor::new(_data);
 	let mut cabinet = cab::Cabinet::new(cursor)?;
 	let mut reader = cabinet.read_file(_filename)?;
@@ -67,7 +67,6 @@ pub fn extract_cab_file(
 
 pub struct WinEsdDownloader {
 	cache_directory: PathBuf,
-	pub files: Vec<FileInfo>,
 	http_client: reqwest::blocking::Client,
 }
 
@@ -78,20 +77,23 @@ impl WinEsdDownloader {
 
 		// Download and parse products.xml
 		let client = reqwest::blocking::Client::new();
-		let response = client
-			.get("https://go.microsoft.com/fwlink/?LinkId=2156292")
-			.send()?
-			.bytes()?;
-
-		let xml_bytes = extract_cab_file(&response, "products.xml").unwrap();
-		let xml_str = String::from_utf8(xml_bytes.clone())?;
-		let files = find_files(&xml_str);
 
 		Ok(Self {
 			cache_directory,
-			files: files,
 			http_client: client,
 		})
+	}
+
+	pub fn files(&self, win_ver: WinVer) -> Result<Vec<FileInfo>, Error> {
+		let url = match win_ver {
+			WinVer::Win10 => "https://go.microsoft.com/fwlink/?LinkId=2156292",
+			WinVer::Win11 => "https://go.microsoft.com/fwlink/?LinkId=841361",
+		};
+		let response = self.http_client.get(url).send()?.bytes()?;
+
+		let xml_bytes = extract_cab_file(&response, "products.xml")?;
+		let xml_str = String::from_utf8(xml_bytes.clone())?;
+		return Ok(find_files(&xml_str)?);
 	}
 
 	pub fn download_tmp(
@@ -99,8 +101,9 @@ impl WinEsdDownloader {
 		language: &str,
 		edition: &str,
 		architecture: &str,
+		win_ver: WinVer,
 	) -> Result<NamedTempFile> {
-		let path = self.download(language, edition, architecture)?;
+		let path = self.download(language, edition, architecture, win_ver)?;
 		let mut tmp_file = NamedTempFile::new()?;
 
 		let mut source_file = File::open(path)?;
@@ -109,8 +112,14 @@ impl WinEsdDownloader {
 		Ok(tmp_file)
 	}
 
-	pub fn download(&self, language: &str, edition: &str, architecture: &str) -> Result<PathBuf> {
-		let file_info = self.find_file_info(language, edition, architecture)?;
+	pub fn download(
+		&self,
+		language: &str,
+		edition: &str,
+		architecture: &str,
+		win_ver: WinVer,
+	) -> Result<PathBuf> {
+		let file_info = self.find_file_info(language, edition, architecture, win_ver)?;
 
 		let normalized_arch = if architecture.eq_ignore_ascii_case("amd64") {
 			"x64"
@@ -183,15 +192,18 @@ impl WinEsdDownloader {
 		language: &str,
 		edition: &str,
 		architecture: &str,
-	) -> Result<&FileInfo> {
+		win_ver: WinVer,
+	) -> Result<FileInfo, Error> {
 		let normalized_arch = if architecture.eq_ignore_ascii_case("amd64") {
 			"x64"
 		} else {
 			architecture
 		};
 
-		self.files
-			.iter()
+		let files = self.files(win_ver)?;
+
+		let file: FileInfo = files
+			.into_iter()
 			.find(|file| {
 				file.language_code.eq_ignore_ascii_case(language)
 					&& file.edition.eq_ignore_ascii_case(edition)
@@ -204,7 +216,8 @@ impl WinEsdDownloader {
 					edition,
 					architecture
 				)
-			})
+			})?;
+		Ok(file)
 	}
 
 	fn calc_sha1(&self, file_path: &Path) -> Result<String> {

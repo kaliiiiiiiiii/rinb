@@ -25,7 +25,7 @@ use serde_json5;
 #[command(version, about = "App with JSON config")]
 struct Args {
 	/// Path to config file
-	#[arg(long)]
+	#[arg(long, default_value = "rinb.json")]
 	config: String,
 	#[arg(long, default_value = "./.rinbcache/esd_cache")]
 	cache_path: String,
@@ -53,7 +53,12 @@ fn main() -> Result<(), Error> {
 	let esd: PathBuf;
 	{
 		let downloader = WinEsdDownloader::new(args.cache_path)?;
-		esd = downloader.download(&config.lang, &config.editon, config.arch.as_str())?;
+		esd = downloader.download(
+			&config.lang,
+			&config.editon,
+			config.arch.as_str(),
+			config.version,
+		)?;
 	}
 
 	println!("ESD file downloaded to {}", esd.display());
@@ -149,7 +154,7 @@ fn main() -> Result<(), Error> {
 		// write install.esd to disk
 		install_esd.select_all_images().write(
 			&TStr::from_path(install_esd_path).unwrap(),
-			WriteFlags::RECOMPRESS,
+			WriteFlags::empty(),
 			n_threads,
 		)?;
 	}

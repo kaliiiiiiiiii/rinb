@@ -2,5 +2,6 @@
   "$schema": "./rinb_schema.json",
   "lang": "en-US",
   "arch": "amd64",
-  "edition": "Professional"
+  "edition": "Professional",
+  "version": "11"
 }

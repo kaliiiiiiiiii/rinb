@@ -87,6 +87,9 @@ jobs:
           cp "$oldPath" "$newPath"
           cp NOTICE.md out/NOTICE.md
           cp LICENSE.txt out/LICENSE.txt
+
+          raw_url="https://raw.githubusercontent.com/${{ github.repository }}/${{github.sha}}/rinb_schema.json"
+          sed "s#\./rinb_schema.json#${raw_url}#g" rinb/rinb.json > out/rinb.json
       
       - uses: actions/upload-artifact@v4
         id: artifact-upload
@@ -139,6 +142,7 @@ jobs:
           files: |
             out/LICENSE.txt
             out/NOTICE.md
+            out/rinb.json
           token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true # waiting for https://github.com/softprops/action-gh-release/commit/605f567f95cfaf9465d68c7dbf509f374691fb12 to be released
           

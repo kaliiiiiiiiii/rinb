@@ -3,6 +3,8 @@
 Install deps for build target
 ```bash
 rustup target add x86_64-pc-windows-gnu
+rustup toolchain add "stable-x86_64-pc-windows-gnu"
+# rustup default stable-x86_64-pc-windows-gnu
 ```
 
 ##### Windows
@@ -18,10 +20,10 @@ Install llvm for [rust-bindgen](https://github.com/rust-lang/rust-bindgen)
 winget install LLVM.LLVM
 ```
 
-Build and generate rinb_schema.json
+Build rinb (and generate rinb_schema.json)
 ```bash
 cd rinb
-cargo build --target x86_64-pc-windows-gnu --release --locked
+cargo +stable-x86_64-pc-windows-gnu build --target x86_64-pc-windows-gnu --release --locked
 ```
 
 # Audit Cargo.lock
