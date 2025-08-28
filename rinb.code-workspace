@@ -25,9 +25,6 @@
 			"stdbool.h": "c"
 		},
 		"rust-analyzer.cargo.target": "x86_64-pc-windows-gnu",
-		"rust-analyzer.cargo.extraArgs": [
-			"+stable-x86_64-pc-windows-gnu"
-		],
 		"rust-analyzer.cargo.extraEnv": {
 			"CARGO_TARGET_DIR": "target",
 			"WIMLIB_NO_PKG_CONFIG": ""
@@ -36,7 +33,10 @@
 			"CARGO_TARGET_DIR": "${workspaceFolder:rinb}/rinb/target"
 		},
 		"terminal.integrated.confirmOnKill": "always",
-		"terminal.integrated.confirmOnExit": "always"
+		"terminal.integrated.confirmOnExit": "always",
+		"lldb.displayFormat": "auto",
+		"lldb.dereferencePointers": true,
+		"lldb.consoleMode": "commands"
 	},
 	"extensions": {
 		"recommendations": [
@@ -144,14 +144,21 @@
 			},
 			{
 				"type": "shell",
+				"presentation": {
+					"echo": true,
+					"reveal": "never",
+					"focus": false,
+					"panel": "shared",
+					"showReuseMessage": true,
+					"clear": false
+				},
 				"label": "flamegraph (admin)",
 				"command": "Start-Process",
 				"args": [
-					"-Verb", "RunAs", "-Wait", "powershell", "-ArgumentList", "-NoExit -WindowStyle Maximized cd \"${workspaceFolder:rinb}/rinb \";setx CARGO_PROFILE_RELEASE_DEBUG true;setx CARGO_TARGET_DIR \"${workspaceFolder:rinb}/rinb/target\";setx CARGO_TARGET_DIR \"${workspaceFolder:rinb}/rinb/target; setx TARGET;setx PROFILE release; \";Clear-Host; cargo flamegraph -v --bin rinb -- --config  \"${workspaceFolder:rinb}/rinb.json\"; Read-Host flamegraph Exited with $LASTEXITCODE, Press ENTER to exit or CTRL+c to stay in console; exit",
+					"-Verb", "RunAs", "-Wait", "powershell", "-ArgumentList", "-NoExit -WindowStyle Maximized cd \"${workspaceFolder:rinb}/rinb\";Clear-Host; flamegraph -v -- ${workspaceFolder:rinb}/rinb/target/x86_64-pc-windows-gnu/debug/rinb.exe  --config  \"${workspaceFolder:rinb}/rinb.json\"; Read-Host flamegraph Exited with $LASTEXITCODE, Press ENTER to exit or CTRL+c to stay in console; exit",
 					 
 				],
 				"group": "test",
-				"hide": true,
 				"isBackground": true,
 			}
 		]

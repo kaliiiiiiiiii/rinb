@@ -84,7 +84,7 @@ impl WinEsdDownloader {
 		})
 	}
 
-	pub fn files(&self, win_ver: WinVer) -> Result<Vec<FileInfo>, Error> {
+	pub fn files(&self, win_ver: &WinVer) -> Result<Vec<FileInfo>, Error> {
 		let url = match win_ver {
 			WinVer::Win10 => "https://go.microsoft.com/fwlink/?LinkId=2156292",
 			WinVer::Win11 => "https://go.microsoft.com/fwlink/?LinkId=841361",
@@ -200,7 +200,7 @@ impl WinEsdDownloader {
 			architecture
 		};
 
-		let files = self.files(win_ver)?;
+		let files = self.files(&win_ver)?;
 
 		let file: FileInfo = files
 			.into_iter()
@@ -211,10 +211,7 @@ impl WinEsdDownloader {
 			})
 			.ok_or_else(|| {
 				anyhow!(
-					"No matching file found for language: {}, edition: {}, architecture: {}",
-					language,
-					edition,
-					architecture
+					"No matching file found for language: {language}, edition: {edition}, architecture: {architecture}, version:{win_ver:?}",
 				)
 			})?;
 		Ok(file)
