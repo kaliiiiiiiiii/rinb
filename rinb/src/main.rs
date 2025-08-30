@@ -4,16 +4,19 @@ use config::Config;
 mod esd_downloader;
 use esd_downloader::WinEsdDownloader;
 
+mod hadris_pack;
+use hadris_pack::pack;
+
 mod utils;
 use utils::{ExpectEqual, TmpDir};
 
-use anyhow::Error;
-use hadris_iso::{
-	BootEntryOptions, BootOptions, BootSectionOptions, EmulationType, FileInput, FileInterchange,
-	FormatOptions, IsoImage, PartitionOptions, PlatformId, Strictness,
-};
+use anyhow::{Error, Result};
+
 use std::{
-	fs::{self, create_dir_all}, num::NonZeroUsize, path::{MAIN_SEPARATOR, PathBuf}, thread
+	fs::{self, create_dir_all},
+	num::NonZeroUsize,
+	path::PathBuf,
+	thread,
 };
 use wimlib::{
 	ExportFlags, ExtractFlags, Image, ImageIndex, OpenFlags, WimLib, WriteFlags, string::TStr, tstr,
@@ -172,38 +175,7 @@ fn main() -> Result<(), Error> {
 		drop(wiml);
 	}
 
-	let fmt_opts = FormatOptions::new()
-		.with_files(FileInput::from_fs(tmp_dir.path.clone())?)
-		.with_level(FileInterchange::NonConformant)
-		.with_boot_options(BootOptions {
-			write_boot_catalogue: true,
-			default: BootEntryOptions {
-				boot_image_path: format!("boot{MAIN_SEPARATOR}etfsboot.com"),
-				load_size: 4,
-				emulation: EmulationType::NoEmulation,
-				boot_info_table: true,
-				grub2_boot_info: true,
-			},
-			entries: vec![(
-				BootSectionOptions {
-					platform_id: PlatformId::UEFI,
-				},
-				BootEntryOptions {
-					boot_image_path: format!("efi{MAIN_SEPARATOR}microsoft{MAIN_SEPARATOR}boot{MAIN_SEPARATOR}efisys.bin"),
-					load_size: 0, // This means the size will be calculated
-					emulation: EmulationType::NoEmulation,
-					boot_info_table: false,
-					grub2_boot_info: false,
-				},
-			)],
-		})
-		//.with_volume_name(format!(
-		//	"RinbWinImage",
-		//	config.arch.as_str(), config.editon, config.lang, config.version.as_str()
-		//))
-		.with_format_options(PartitionOptions::GPT)
-		.with_strictness(Strictness::Default);
-	create_dir_all(&PathBuf::from(&args.out).parent().unwrap())?;
-	let _ = IsoImage::format_file(PathBuf::from(args.out), fmt_opts)?;
+	pack(&tmp_dir.path, &PathBuf::from(args.out))?;
+
 	Ok(())
 }

@@ -683,9 +683,7 @@ dependencies = [
 
 [[package]]
 name = "hadris-common"
-version = "0.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8642d3702488f5e727146cd513de1c657c5a59eb39a9837724320f0726d99d5f"
+version = "0.1.2"
 dependencies = [
  "bytemuck",
  "chrono",
@@ -694,17 +692,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "hadris-io"
+version = "0.1.2"
+dependencies = [
+ "cfg-if",
+]
+
+[[package]]
 name = "hadris-iso"
-version = "0.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "184e5ecd9dcafa6214ea588776a4a676557c8134e81d548a43b6c435a93fb608"
+version = "0.1.2"
 dependencies = [
  "bitflags",
  "bytemuck",
  "chrono",
  "hadris-common",
+ "hadris-io",
  "log",
- "tempfile",
  "thiserror",
 ]
 
