@@ -1,3 +1,6 @@
 [submodule "toolsnt"]
 	path = toolsnt
 	url = https://github.com/kaliiiiiiiiii/toolsnt
+[submodule "hadris"]
+	path = hadris
+	url = https://github.com/kaliiiiiiiiii/hadris
