@@ -1,4 +1,4 @@
-use crate::config::WinVer;
+use crate::config::{Config, MajorWinVer};
 
 use std::fs::{self, File};
 use std::io::{self, BufReader, Cursor, Read};
@@ -56,6 +56,24 @@ fn find_files(xml: &str) -> Result<Vec<FileInfo>, Error> {
 	Ok(result)
 }
 
+pub fn filename_without_extension(url: &String) -> Result<String, Error> {
+	// Strip query parameters and fragment
+	let end = url.find(|c| c == '?' || c == '#').unwrap_or(url.len());
+	let path = &url[..end];
+
+	// Get the last segment after '/'
+	let filename = match path.rfind('/') {
+		Some(pos) if pos + 1 < path.len() => &path[pos + 1..],
+		_ => return Err(Error::msg(format!("No filename found in URL:{url}"))),
+	};
+
+	// Remove extension if any
+	match filename.rfind('.') {
+		Some(dot_pos) if dot_pos > 0 => Ok(filename[..dot_pos].to_string()),
+		_ => Ok(filename.to_string()), // no extension found
+	}
+}
+
 pub fn extract_cab_file(_data: &[u8], _filename: &str) -> Result<Vec<u8>, Error> {
 	let cursor = Cursor::new(_data);
 	let mut cabinet = cab::Cabinet::new(cursor)?;
@@ -84,10 +102,10 @@ impl WinEsdDownloader {
 		})
 	}
 
-	pub fn files(&self, win_ver: &WinVer) -> Result<Vec<FileInfo>, Error> {
+	pub fn files(&self, win_ver: &MajorWinVer) -> Result<Vec<FileInfo>, Error> {
 		let url = match win_ver {
-			WinVer::Win10 => "https://go.microsoft.com/fwlink/?LinkId=2156292",
-			WinVer::Win11 => "https://go.microsoft.com/fwlink/?LinkId=841361",
+			MajorWinVer::Win10 => "https://go.microsoft.com/fwlink/?LinkId=2156292",
+			MajorWinVer::Win11 => "https://go.microsoft.com/fwlink/?LinkId=841361",
 		};
 		let response = self.http_client.get(url).send()?.bytes()?;
 
@@ -96,14 +114,8 @@ impl WinEsdDownloader {
 		return Ok(find_files(&xml_str)?);
 	}
 
-	pub fn download_tmp(
-		&self,
-		language: &str,
-		edition: &str,
-		architecture: &str,
-		win_ver: WinVer,
-	) -> Result<NamedTempFile> {
-		let path = self.download(language, edition, architecture, win_ver)?;
+	pub fn download_tmp(&self, config: &Config) -> Result<NamedTempFile> {
+		let path = self.download(config)?;
 		let mut tmp_file = NamedTempFile::new()?;
 
 		let mut source_file = File::open(path)?;
@@ -112,30 +124,40 @@ impl WinEsdDownloader {
 		Ok(tmp_file)
 	}
 
-	pub fn download(
-		&self,
-		language: &str,
-		edition: &str,
-		architecture: &str,
-		win_ver: WinVer,
-	) -> Result<PathBuf> {
-		let file_info = self.find_file_info(language, edition, architecture, win_ver)?;
+	pub fn download(&self, config: &Config) -> Result<PathBuf, Error> {
+		let (expected_size, expected_sha1, url): (u64, String, String);
 
-		let normalized_arch = if architecture.eq_ignore_ascii_case("amd64") {
-			"x64"
+		// figure out pinning, sha1, size, url etc.
+
+		if let Some(cfgurl) = &config.url {
+			url = cfgurl.clone();
+			let (sha1, size) = config.parse_sha1size()?; // assuming parse_sha1size can borrow &self
+			expected_sha1 = sha1;
+			expected_size = size;
 		} else {
-			architecture
-		};
+			let file_info = self.find_file_info(&config)?;
+			url = file_info.file_path;
+			let sha1size = (file_info.sha1, file_info.size);
 
-		// Generate cache file name: {original_name}-{language}-{edition}-{architecture}-{sha1}.esd
-		let file_stem = Path::new(&file_info.file_name)
-			.file_stem()
-			.and_then(|s| s.to_str())
-			.unwrap_or("unknown");
+			if let Some(expected_sha1size) = config.parse_sha1size().ok() {
+				assert_eq!(
+					sha1size, expected_sha1size,
+					"Mismatch between config.sha1size and actual file info reported by the endpoint"
+				);
+			}
+			expected_sha1 = sha1size.0;
+			expected_size = sha1size.1;
+		}
+		let file_name = filename_without_extension(&url)?;
+		print!("Esd file from: {url}");
 
 		let cache_file_name = format!(
 			"{}-{}-{}-{}-{}.esd",
-			file_stem, language, edition, normalized_arch, file_info.sha1
+			file_name,
+			config.lang,
+			config.edition,
+			config.arch.as_str(),
+			expected_sha1
 		);
 
 		let cache_file_path = &self.cache_directory.join(cache_file_name);
@@ -145,26 +167,20 @@ impl WinEsdDownloader {
 			let existing_sha1 = self.calc_sha1(&cache_file_path)?;
 			let existing_size = fs::metadata(cache_file_path)?.len();
 
-			if existing_sha1.eq_ignore_ascii_case(&file_info.sha1)
-				&& existing_size == file_info.size
+			if existing_sha1.eq_ignore_ascii_case(&expected_sha1) && existing_size == expected_size
 			{
 				return Ok(cache_file_path.to_path_buf());
 			}
 
 			eprintln!(
-				"Found existing modified or corrupted file: {}.\nGot SHA1: {}\nExpected:{}\nGot size:{}\nExpected:{}\n Deleting and downloading again.",
-				cache_file_path.display(),
-				file_info.sha1,
-				existing_sha1,
-				existing_size,
-				file_info.size
+				"Found existing modified or corrupted file: {cache_file_path:?}.\nGot SHA1: {existing_sha1}\nExpected:{expected_sha1}\nGot size:{existing_size}\nExpected:{expected_size}\n Deleting and downloading again.",
 			);
 
 			fs::remove_file(&cache_file_path)?;
 		}
 
 		// Download the file
-		let mut response = self.http_client.get(&file_info.file_path).send()?;
+		let mut response = self.http_client.get(url).send()?;
 		let mut file = File::create(&cache_file_path)?;
 		io::copy(&mut response, &mut file)?;
 
@@ -172,48 +188,50 @@ impl WinEsdDownloader {
 		let actual_sha1 = self.calc_sha1(&cache_file_path)?;
 		let existing_size = fs::metadata(cache_file_path)?.len();
 
-		if !(actual_sha1.eq_ignore_ascii_case(&file_info.sha1) && existing_size == file_info.size) {
+		if !(actual_sha1.eq_ignore_ascii_case(&expected_sha1) && existing_size == expected_size) {
 			fs::remove_file(&cache_file_path)?;
 			return Err(anyhow!(
-				"SHA-1 verification failed for {}.\nGot SHA1: {}\nExpected:{}\nGot size:{}\nExpected:{}\n Deleting and downloading again.",
-				cache_file_path.display(),
-				file_info.sha1,
-				actual_sha1,
-				existing_size,
-				file_info.size
+				"SHA-1 verification failed for {cache_file_path:?}.\nGot SHA1: {actual_sha1}\nExpected:{expected_sha1}\nGot size:{existing_size}\nExpected:{expected_size}\n Deleting and downloading again.",
 			));
 		}
 
 		Ok(cache_file_path.to_path_buf())
 	}
 
-	fn find_file_info(
-		&self,
-		language: &str,
-		edition: &str,
-		architecture: &str,
-		win_ver: WinVer,
-	) -> Result<FileInfo, Error> {
-		let normalized_arch = if architecture.eq_ignore_ascii_case("amd64") {
-			"x64"
-		} else {
-			architecture
+	fn find_file_info(&self, config: &Config) -> Result<FileInfo, Error> {
+		let files = self.files(&config.version)?;
+
+		let matching_files: Vec<FileInfo> = files
+			.into_iter()
+			.filter(|file| {
+				file.language_code.eq_ignore_ascii_case(&config.lang)
+					&& file.edition.eq_ignore_ascii_case(&config.edition)
+					&& file.architecture.eq_ignore_ascii_case(config.arch.as_str())
+			})
+			.collect();
+
+		let file = match matching_files.len() {
+			0 => {
+				return Err(anyhow!(
+					"No matching file found for language: {}, edition: {}, architecture: {}, version:{}",
+					config.lang,
+					config.edition,
+					config.arch.as_str(),
+					config.version.as_str()
+				));
+			}
+			1 => matching_files.into_iter().next().unwrap(), // exactly one match
+			_ => {
+				return Err(anyhow!(
+					"Multiple matching files found for language: {}, edition: {}, architecture: {}, version:{}",
+					config.lang,
+					config.edition,
+					config.arch.as_str(),
+					config.version.as_str()
+				));
+			}
 		};
 
-		let files = self.files(&win_ver)?;
-
-		let file: FileInfo = files
-			.into_iter()
-			.find(|file| {
-				file.language_code.eq_ignore_ascii_case(language)
-					&& file.edition.eq_ignore_ascii_case(edition)
-					&& file.architecture.eq_ignore_ascii_case(normalized_arch)
-			})
-			.ok_or_else(|| {
-				anyhow!(
-					"No matching file found for language: {language}, edition: {edition}, architecture: {architecture}, version:{win_ver:?}",
-				)
-			})?;
 		Ok(file)
 	}
 

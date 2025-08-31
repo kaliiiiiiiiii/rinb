@@ -17,7 +17,8 @@ Options:
 A sample config file can be found at [rinb.json](rinb.json) ([json-schema](rinb_schema.json))
 
 # TODO
-- use  [hadris-iso](https://crates.io/crates/hadris-iso) to create a bootable iso for testing
+- support caching built base `install.wim`, `boot.wim` and `base.wim`
+- ~~use [hadris-iso](https://crates.io/crates/hadris-iso) to~~ create a bootable iso for testing
 - support other targets than ["x86_64-pc-windows-gnu", "x86_64-unknown-linux-gnu"]
 
 # Building

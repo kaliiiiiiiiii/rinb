@@ -22,7 +22,8 @@
 			}
 		],
 		"files.associations": {
-			"stdbool.h": "c"
+			"stdbool.h": "c",
+			"rinb.json":"jsonc"
 		},
 		"rust-analyzer.cargo.target": "x86_64-pc-windows-gnu",
 		"rust-analyzer.cargo.extraEnv": {

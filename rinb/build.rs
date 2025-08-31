@@ -1,5 +1,5 @@
 use schemars::schema_for;
-use serde_json::{Value, json};
+use serde_json::{Map, Value, json};
 use std::{collections::HashMap, env, fs, path::PathBuf};
 
 mod config {
@@ -10,7 +10,7 @@ mod esd_downloader {
 	include!("src/esd_downloader.rs");
 }
 
-use config::{Config, WinVer};
+use config::{Config, MajorWinVer};
 use esd_downloader::{FileInfo, WinEsdDownloader};
 
 fn get_property(file: &FileInfo, prop: &str, version: &str) -> Option<String> {
@@ -23,90 +23,107 @@ fn get_property(file: &FileInfo, prop: &str, version: &str) -> Option<String> {
 	}
 }
 
-fn build_conditions_recursive(
-	files: &[&FileInfo],
-	version: &str,
-	props: &[&str],
-	prefix: HashMap<&str, String>,
-	out: &mut Vec<Value>,
-) {
-	if props.is_empty() {
-		return;
-	}
+fn build_property_enums(version_files: &HashMap<MajorWinVer, Vec<FileInfo>>) -> Map<String, Value> {
+	let props = vec![
+		// "version", "architecture", // we don't need these dynamically
+		"edition", "lang",
+	];
+	let mut defs = Map::new();
 
-	let current_prop = props[0];
-	let mut groups: HashMap<String, Vec<&FileInfo>> = HashMap::new();
+	for &prop in &props {
+		let mut vals: Vec<String> = Vec::new();
 
-	for f in files {
-		if let Some(val) = get_property(f, current_prop, version) {
-			groups.entry(val).or_default().push(*f);
-		}
-	}
-
-	for (val, group) in groups {
-		// collect unique next values
-		if props.len() > 1 {
-			let next_prop = props[1];
-			let mut next_vals: Vec<String> = group
-				.iter()
-				.filter_map(|f| get_property(f, next_prop, version))
-				.collect();
-			next_vals.sort();
-			next_vals.dedup();
-
-			// build the "if" condition = all prefix props + current prop
-			let mut if_props = serde_json::Map::new();
-			for (k, v) in &prefix {
-				if_props.insert((*k).to_string(), json!({ "const": v }));
+		for (ver, files) in version_files {
+			let ver_str = ver.as_str();
+			for f in files {
+				if let Some(val) = get_property(f, prop, ver_str) {
+					vals.push(val);
+				}
 			}
-			if_props.insert(current_prop.to_string(), json!({ "const": val }));
+		}
 
-			out.push(json!({
-				"if": { "properties": if_props },
-				"then": { "properties": { next_prop: { "enum": next_vals } } }
-			}));
+		vals.sort();
+		vals.dedup();
 
-			// recurse deeper
-			let mut new_prefix = prefix.clone();
-			new_prefix.insert(current_prop, val.clone());
-			build_conditions_recursive(&group, version, &props[1..], new_prefix, out);
+		if !vals.is_empty() {
+			defs.insert(prop.to_string(), json!({ "enum": vals }));
 		}
 	}
-}
 
-pub fn build_dynamic_conditions(version_files: &HashMap<WinVer, Vec<FileInfo>>) -> Value {
-	let mut all_of = Vec::new();
-
-	// properties in order
-	let props = vec!["version", "architecture", "edition", "lang"];
-
-	for (ver, files) in version_files {
-		let ver_str = ver.as_str();
-		let files_ref: Vec<&FileInfo> = files.iter().collect();
-		build_conditions_recursive(&files_ref, ver_str, &props, HashMap::new(), &mut all_of);
-	}
-
-	Value::Array(all_of)
+	defs
 }
 
 fn main() -> anyhow::Result<()> {
 	let mut schema = schema_for!(Config);
 	let downloader = WinEsdDownloader::new("./.rinbcache/esd_cache")?;
 
-	let files10: Vec<FileInfo> = downloader.files(&WinVer::Win10)?;
-	let files11: Vec<FileInfo> = downloader.files(&WinVer::Win11)?;
+	let files10: Vec<FileInfo> = downloader.files(&MajorWinVer::Win10)?;
+	let files11: Vec<FileInfo> = downloader.files(&MajorWinVer::Win11)?;
 
 	let mut version_files = HashMap::new();
-	version_files.insert(WinVer::Win10, files10);
-	version_files.insert(WinVer::Win11, files11);
+	version_files.insert(MajorWinVer::Win10, files10);
+	version_files.insert(MajorWinVer::Win11, files11);
 
-	let all_of = build_dynamic_conditions(&version_files);
-	schema.insert("allOf".to_owned(), all_of);
+	let enums = build_property_enums(&version_files);
+
+	// modify schema
+	let schema_obj = schema.as_object_mut().unwrap();
+
+	let props = schema_obj
+		.entry("properties".to_string())
+		.or_insert_with(|| Value::Object(Map::new()))
+		.as_object_mut()
+		.unwrap();
+
+	// iterate over enums and collect inserts for defs
+	let mut defs_inserts = Vec::new();
+	for (k, v) in enums.iter() {
+		defs_inserts.push((k.clone(), v.clone()));
+		let prop = props.get_mut(k).unwrap().as_object_mut().unwrap();
+		prop.remove("type");
+		prop.insert("$ref".to_string(), json!(format!("#/$defs/{k}")));
+	}
+
+	// insert defs after modifying props
+	let defs = schema_obj
+		.entry("$defs".to_string())
+		.or_insert_with(|| Value::Object(Map::new()))
+		.as_object_mut()
+		.unwrap();
+
+	for (k, v) in defs_inserts {
+		defs.insert(k, v);
+	}
+    
+	// require sha1size if url is specified
+	schema_obj.insert(
+		"allOf".to_string(),
+		json!([
+			{
+				"if": {
+					"not": {
+						"properties": {
+							"url": { "const": null }
+						}
+					}
+				},
+				"then": {
+					"required": ["sha1size"],
+					"properties": {
+						"sha1size": {
+							"type": "string",
+							"pattern": "^[0-9a-f]{40}:[0-9]+$"
+						}
+					}
+				}
+			}
+		]),
+	);
 
 	let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 	let dest = manifest_dir.parent().unwrap().join("rinb_schema.json");
 
-	fs::write(&dest, serde_json::to_string(&schema)?)?;
+	fs::write(&dest, serde_json::to_string_pretty(&schema)?)?;
 
 	println!("cargo:warning=Schema written to {}", dest.display());
 	Ok(())

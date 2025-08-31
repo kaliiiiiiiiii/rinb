@@ -3,9 +3,9 @@ use config::Config;
 
 mod esd_downloader;
 use esd_downloader::WinEsdDownloader;
-
+/*
 mod hadris_pack;
-use hadris_pack::pack;
+use hadris_pack::pack; */
 
 mod utils;
 use utils::{ExpectEqual, TmpDir};
@@ -59,15 +59,10 @@ fn main() -> Result<(), Error> {
 	let esd: PathBuf;
 	{
 		let downloader = WinEsdDownloader::new(args.cache_path)?;
-		esd = downloader.download(
-			&config.lang,
-			&config.editon,
-			config.arch.as_str(),
-			config.version,
-		)?;
+		esd = downloader.download(&config)?;
 	}
 
-	println!("ESD file downloaded to {}", esd.display());
+	println!("ESD file fetched to {}", esd.display());
 
 	let tmp_dir = &TmpDir::new()?;
 
@@ -131,11 +126,11 @@ fn main() -> Result<(), Error> {
 
 				// only  add images where editionID matches
 				let (name, descr, edition) = img_info(&install_wim);
-				if edition.to_str() == config.editon {
+				if edition.to_str() == config.edition {
 					if install_found {
 						return Err(Error::msg(format!(
 							"Multiple install images matching selected edition ({}) found",
-							config.editon
+							config.edition
 						)));
 					} else {
 						install_found = true;
@@ -151,7 +146,7 @@ fn main() -> Result<(), Error> {
 			if !install_found {
 				return Err(Error::msg(format!(
 					"No install images matching selected edition ({}) found",
-					config.editon
+					config.edition
 				)));
 			}
 
@@ -175,7 +170,7 @@ fn main() -> Result<(), Error> {
 		drop(wiml);
 	}
 
-	pack(&tmp_dir.path, &PathBuf::from(args.out))?;
+	// pack(&tmp_dir.path, &PathBuf::from(args.out))?;
 
 	Ok(())
 }

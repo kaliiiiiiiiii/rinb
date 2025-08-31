@@ -73,7 +73,7 @@ pub fn pack(base_path: &PathBuf, outpath: &PathBuf) -> Result<(), Error> {
 				boot_image_path: format!("etfsboot.com"),
 				load_size: NonZero::new(4),
 				emulation: EmulationType::NoEmulation,
-				boot_info_table: true,
+				boot_info_table: false,
 				grub2_boot_info: false,
 			},
 			entries: vec![(
@@ -82,15 +82,15 @@ pub fn pack(base_path: &PathBuf, outpath: &PathBuf) -> Result<(), Error> {
 				},
 				BootEntryOptions {
 					boot_image_path: format!("efisys.bin"),
-					load_size: NonZero::new(0), // This means the size will be calculated
+					load_size: None, // This means the size will be calculated
 					emulation: EmulationType::NoEmulation,
-					boot_info_table: true,
+					boot_info_table: false,
 					grub2_boot_info: false,
 				},
 			)],
 		})
 		.with_volume_name(format!("RINB"))
-		.with_format_options(PartitionOptions::GPT)
+		.with_format_options(PartitionOptions::GPT|PartitionOptions::PROTECTIVE_MBR)
 		.with_strictness(Strictness::default());
 	fs::create_dir_all(outpath.parent().unwrap())?;
 	IsoImage::format_file(outpath, fmt_opts)?;
