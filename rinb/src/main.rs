@@ -121,8 +121,9 @@ fn main() -> Result<(), Error> {
 		// create boot.wim
 		{
 			let boot_wim_path = tmp_dir.path.join("sources/boot.wim");
-			let mut boot_wim = wiml.create_new_wim(wimlib::CompressionType::Lzx)?;
-			boot_wim.set_output_chunk_size(32 * 1024)?; // 32k, see https://github.com/ebiggers/wimlib/blob/e59d1de0f439d91065df7c47f647f546728e6a24/src/wim.c#L48-L83
+			let mut boot_wim = wiml.create_new_wim(wimlib::CompressionType::Lzms)?;
+			boot_wim.set_output_chunk_size(128 * 1024)?; // 128k
+			//boot_wim.set_output_chunk_size(32 * 1024)?; // 32k, see https://github.com/ebiggers/wimlib/blob/e59d1de0f439d91065df7c47f647f546728e6a24/src/wim.c#L48-L83
 
 			// 2: add Windows PE to boot.wim
 			let win_pe = wimf.select_image(ImageIndex::new(2).unwrap());
@@ -137,7 +138,7 @@ fn main() -> Result<(), Error> {
 			win_setup.export(&boot_wim, Some(name), Some(descr), ExportFlags::BOOT)?;
 
 			// write boot.wim to disk
-			let bar_msg = format!("writing boot.wim\n");
+			let bar_msg = format!("compressing and writing boot.wim\n");
 			let pb = mk_pb(&bar_msg);
 			boot_wim.register_progress_callback(move |msg| {
 				progress_callback(msg, &pb, bar_msg.clone())
@@ -189,7 +190,7 @@ fn main() -> Result<(), Error> {
 			}
 
 			// write install.esd to disk
-			let bar_msg = format!("writing install.esd\n");
+			let bar_msg = format!("compressing and writing install.esd\n");
 			let pb = mk_pb(&bar_msg);
 			install_esd.register_progress_callback(move |msg| {
 				progress_callback(msg, &pb, bar_msg.clone())
