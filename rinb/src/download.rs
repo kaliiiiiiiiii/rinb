@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{Read, Write, BufWriter};
+use std::io::{BufWriter, Read, Write};
 use std::path::PathBuf;
 
 use anyhow::{Error, Result, anyhow};
@@ -67,7 +67,6 @@ pub fn fdownload<R: Read>(
 	}
 	pb.set_position(total_bytes); // Final update
 
-
 	let finish_message = format!("Finished {}", label);
 	pb.finish_with_message(finish_message);
 
@@ -98,7 +97,10 @@ pub fn download_from_url(
 		Some(cache_file_path),
 		expected_size,
 		expected_sha1,
-		&format!("Downloading and verifying (hashing) {:?}\n", &cache_file_path.file_name().unwrap()),
+		&format!(
+			"Downloading and verifying (hashing) {:?}\n",
+			&cache_file_path.file_name().unwrap()
+		),
 	)?;
 
 	Ok(())

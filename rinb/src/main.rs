@@ -11,7 +11,7 @@ mod hadris_pack;
 use hadris_pack::pack; */
 
 mod utils;
-use utils::{ExpectEqual, TmpDir};
+use utils::{ExpectEqual, TmpDir, img_info, mk_pb, progress_callback};
 
 use anyhow::{Error, Result};
 
@@ -22,12 +22,12 @@ use std::{
 	thread,
 };
 use wimlib::{
-	ExportFlags, ExtractFlags, Image, ImageIndex, OpenFlags, WimLib, WriteFlags, string::TStr, tstr,
+	ExportFlags, ExtractFlags, ImageIndex, OpenFlags, WimLib, WriteFlags, string::TStr, tstr,
 };
 
 use clap::Parser;
-use serde_json5;
 use serde_json;
+use serde_json5;
 
 #[derive(Parser, Debug)]
 #[command(version, about = "App with JSON config")]
@@ -63,17 +63,6 @@ impl Args {
 	}
 }
 
-fn img_info<'a>(image: &'a Image<'a>) -> (&'a TStr, &'a TStr, &'a TStr) {
-	let (name, descr, edition) = (
-		image.property(tstr!("NAME")).unwrap(),
-		image.property(tstr!("DESCRIPTION")).unwrap(),
-		image
-			.property(tstr!("WINDOWS/EDITIONID"))
-			.unwrap_or(tstr!("")),
-	);
-	return (name, descr, edition);
-}
-
 fn main() -> Result<(), Error> {
 	let args = Args::parse();
 	let mut config: Config;
@@ -81,9 +70,9 @@ fn main() -> Result<(), Error> {
 	// identify cfg_path to use (lock or regular)
 	let cfg_path: PathBuf;
 	let lock_path = &args.lock_path();
-	if lock_path.exists(){
+	if lock_path.exists() {
 		cfg_path = lock_path.to_path_buf()
-	}else{
+	} else {
 		cfg_path = PathBuf::from(&args.config)
 	}
 	{
@@ -132,7 +121,7 @@ fn main() -> Result<(), Error> {
 		// create boot.wim
 		{
 			let boot_wim_path = tmp_dir.path.join("sources/boot.wim");
-			let boot_wim = wiml.create_new_wim(wimlib::CompressionType::Lzx)?;
+			let mut boot_wim = wiml.create_new_wim(wimlib::CompressionType::Lzx)?;
 			boot_wim.set_output_chunk_size(32 * 1024)?; // 32k, see https://github.com/ebiggers/wimlib/blob/e59d1de0f439d91065df7c47f647f546728e6a24/src/wim.c#L48-L83
 
 			// 2: add Windows PE to boot.wim
@@ -147,7 +136,13 @@ fn main() -> Result<(), Error> {
 			edition.expect_equal(tstr!("WindowsPE"), "Unexpected image at index 3")?;
 			win_setup.export(&boot_wim, Some(name), Some(descr), ExportFlags::BOOT)?;
 
-			// writ boot.wim to disk
+			// write boot.wim to disk
+			let bar_msg = format!("writing boot.wim\n");
+			let pb = mk_pb(&bar_msg);
+			boot_wim.register_progress_callback(move |msg| {
+				progress_callback(msg, &pb, bar_msg.clone())
+			});
+
 			boot_wim.select_all_images().write(
 				&TStr::from_path(boot_wim_path).unwrap(),
 				WriteFlags::empty(),
@@ -158,7 +153,8 @@ fn main() -> Result<(), Error> {
 		// create install.esd
 		{
 			let install_esd_path = tmp_dir.path.join("sources/install.esd");
-			let install_esd = wiml.create_new_wim(wimlib::CompressionType::Lzms)?;
+			let mut install_esd = wiml.create_new_wim(wimlib::CompressionType::Lzms)?;
+			// install_esd.register_progress_callback(progress_callback);
 			install_esd.set_output_chunk_size(128 * 1024)?; // 128k
 
 			// 0 to image_count: add to install.esd for image which matches EDITIONID
@@ -193,6 +189,11 @@ fn main() -> Result<(), Error> {
 			}
 
 			// write install.esd to disk
+			let bar_msg = format!("writing install.esd\n");
+			let pb = mk_pb(&bar_msg);
+			install_esd.register_progress_callback(move |msg| {
+				progress_callback(msg, &pb, bar_msg.clone())
+			});
 			install_esd.select_all_images().write(
 				&TStr::from_path(install_esd_path).unwrap(),
 				WriteFlags::empty(),
@@ -203,10 +204,11 @@ fn main() -> Result<(), Error> {
 		{
 			// extract base image to disk
 			let extract_flags = ExtractFlags::STRICT_ACLS
-        // ExtractFlags::NTFS |
-        | ExtractFlags::STRICT_GLOB
-        | ExtractFlags::STRICT_SYMLINKS
-        | ExtractFlags::STRICT_SHORT_NAMES;
+				// ExtractFlags::NTFS |
+				| ExtractFlags::STRICT_GLOB
+				| ExtractFlags::STRICT_SYMLINKS
+				| ExtractFlags::STRICT_SHORT_NAMES;
+			// TODO: add progress bar for extracting.
 			base_image.extract(&TStr::from_path(&tmp_dir.path).unwrap(), extract_flags)?;
 		}
 		drop(wiml);
