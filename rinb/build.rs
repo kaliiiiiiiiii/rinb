@@ -10,6 +10,11 @@ mod esd_downloader {
 	include!("src/esd_downloader.rs");
 }
 
+mod download {
+	include!("src/download.rs");
+}
+
+
 use config::{Config, MajorWinVer};
 use esd_downloader::{FileInfo, WinEsdDownloader};
 

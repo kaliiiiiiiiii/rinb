@@ -1,8 +1,11 @@
+mod download;
+
 mod config;
 use config::Config;
 
 mod esd_downloader;
 use esd_downloader::WinEsdDownloader;
+
 /*
 mod hadris_pack;
 use hadris_pack::pack; */
@@ -15,7 +18,7 @@ use anyhow::{Error, Result};
 use std::{
 	fs::{self, create_dir_all},
 	num::NonZeroUsize,
-	path::PathBuf,
+	path::{Path, PathBuf},
 	thread,
 };
 use wimlib::{
@@ -24,17 +27,40 @@ use wimlib::{
 
 use clap::Parser;
 use serde_json5;
+use serde_json;
 
 #[derive(Parser, Debug)]
 #[command(version, about = "App with JSON config")]
 struct Args {
-	/// Path to config file
+	/// Path to config file, {path}.lock{extension} will be used if it exists.
 	#[arg(long, default_value = "rinb.json", alias = "c")]
 	config: String,
 	#[arg(long, default_value = "out/devwin.iso", alias = "o")]
 	out: String,
 	#[arg(long, default_value = "./.rinbcache/esd_cache", alias = "cc")]
 	cache_path: String,
+}
+
+impl Args {
+	fn lock_path(&self) -> PathBuf {
+		let original = PathBuf::from(self.config.clone());
+		let parent = original.parent().unwrap_or_else(|| Path::new(""));
+
+		let file_name = original.file_name().unwrap_or_default().to_string_lossy();
+
+		// Insert "-lock" before the first dot, or at the end if no dot exists
+		let mut parts = file_name.splitn(2, '.');
+		let base = parts.next().unwrap_or("");
+		let rest = parts.next();
+
+		let mut new_name = format!("{}.lock", base);
+		if let Some(rest) = rest {
+			new_name.push('.');
+			new_name.push_str(rest);
+		}
+
+		parent.join(new_name)
+	}
 }
 
 fn img_info<'a>(image: &'a Image<'a>) -> (&'a TStr, &'a TStr, &'a TStr) {
@@ -50,19 +76,35 @@ fn img_info<'a>(image: &'a Image<'a>) -> (&'a TStr, &'a TStr, &'a TStr) {
 
 fn main() -> Result<(), Error> {
 	let args = Args::parse();
-	let config: Config;
+	let mut config: Config;
+
+	// identify cfg_path to use (lock or regular)
+	let cfg_path: PathBuf;
+	let lock_path = &args.lock_path();
+	if lock_path.exists(){
+		cfg_path = lock_path.to_path_buf()
+	}else{
+		cfg_path = PathBuf::from(&args.config)
+	}
 	{
-		let data = fs::read_to_string(&args.config)?;
+		let data = fs::read_to_string(cfg_path)?;
 		config = serde_json5::from_str(&data)?;
 	}
 
-	let esd: PathBuf;
+	// download esd image
+	let (esd, sha1size, url): (PathBuf, String, String);
 	{
 		let downloader = WinEsdDownloader::new(args.cache_path)?;
-		esd = downloader.download(&config)?;
+		(esd, sha1size, url) = downloader.download(&config)?;
 	}
 
-	println!("ESD file fetched to {}", esd.display());
+	// lock esd for url & sha1size
+	config.url = Some(url);
+	config.sha1size = Some(sha1size);
+	{
+		let data = serde_json::to_string_pretty(&config)?;
+		fs::write(lock_path, data)?
+	}
 
 	let tmp_dir = &TmpDir::new()?;
 

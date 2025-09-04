@@ -29,6 +29,8 @@ wimlib = { path = "../toolsnt/wimlib", features = [
 ], default-features = false }
 
 hadris-iso = { path = "../hadris/crates/hadris-iso" }
+indicatif = "0.18.0"
+serde_json = "1.0.143"
 # winapi = {version="0.3.9",features = ["winbase", "winnt", "memoryapi"] }
 
 [build-dependencies]
@@ -42,3 +44,4 @@ roxmltree = "0.20.0"
 sha1 = "0.10.6"
 hex = "0.4.3"
 cab = "0.6.0"
+indicatif = "0.18.0"

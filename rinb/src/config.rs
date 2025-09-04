@@ -72,7 +72,10 @@ pub struct Config {
 		description = "{sha1}:{sizeInBytes} for pinning"
 	)]
 	pub sha1size: Option<String>,
-	#[schemars(url, description = "Optional URL for pinning. Requires sha1size to be defined.")]
+	#[schemars(
+		url,
+		description = "Optional URL for pinning. Requires sha1size to be defined."
+	)]
 	pub url: Option<String>,
 }
 
@@ -87,7 +90,7 @@ impl Config {
 				.parse::<u64>()
 				.map_err(|_| Error::msg("size must be a valid u64"))?;
 
-			return Ok((sha1str.to_string(), size))
+			return Ok((sha1str.to_string(), size));
 		};
 		Err(Error::msg("sha1size not provided"))
 	}

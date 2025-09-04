@@ -1,13 +1,14 @@
 use crate::config::{Config, MajorWinVer};
 
+use crate::download::{download_from_url, fdownload};
+
 use std::fs::{self, File};
-use std::io::{self, BufReader, Cursor, Read};
+use std::io::{self, BufReader, Cursor, Read, Write};
 use std::path::{Path, PathBuf};
 use std::string::String;
 
 use anyhow::{Error, Ok, Result, anyhow};
 use roxmltree::Document;
-use sha1::{Digest, Sha1};
 use tempfile::NamedTempFile;
 
 #[derive(Debug)]
@@ -113,43 +114,45 @@ impl WinEsdDownloader {
 		let xml_str = String::from_utf8(xml_bytes.clone())?;
 		return Ok(find_files(&xml_str)?);
 	}
-
-	pub fn download_tmp(&self, config: &Config) -> Result<NamedTempFile> {
-		let path = self.download(config)?;
+	/// returns path:NamedTempFile, sha1size:String, url:String
+	pub fn download_tmp(&self, config: &Config) -> Result<(NamedTempFile, String, String)> {
+		let (path, sha1size, url) = self.download(config)?;
 		let mut tmp_file = NamedTempFile::new()?;
 
 		let mut source_file = File::open(path)?;
 		io::copy(&mut source_file, &mut tmp_file)?;
 
-		Ok(tmp_file)
+		Ok((tmp_file, sha1size, url))
 	}
-
-	pub fn download(&self, config: &Config) -> Result<PathBuf, Error> {
-		let (expected_size, expected_sha1, url): (u64, String, String);
+	/// returns path:PathBuf, sha1size:String, url:String
+	pub fn download(&self, config: &Config) -> Result<(PathBuf, String, String), Error> {
+		let (expected_size, expected_sha1, url, sha1size): (u64, String, String, String);
 
 		// figure out pinning, sha1, size, url etc.
-
 		if let Some(cfgurl) = &config.url {
+			// config.url exists
 			url = cfgurl.clone();
-			let (sha1, size) = config.parse_sha1size()?; // assuming parse_sha1size can borrow &self
+			let (sha1, size) = config.parse_sha1size()?;
+			sha1size = config.sha1size.clone().unwrap();
 			expected_sha1 = sha1;
 			expected_size = size;
 		} else {
+			// find url
 			let file_info = self.find_file_info(&config)?;
 			url = file_info.file_path;
-			let sha1size = (file_info.sha1, file_info.size);
+			let localsha1size = (file_info.sha1, file_info.size);
 
 			if let Some(expected_sha1size) = config.parse_sha1size().ok() {
 				assert_eq!(
-					sha1size, expected_sha1size,
+					localsha1size, expected_sha1size,
 					"Mismatch between config.sha1size and actual file info reported by the endpoint"
 				);
 			}
-			expected_sha1 = sha1size.0;
-			expected_size = sha1size.1;
-		}
+			expected_sha1 = localsha1size.0;
+			expected_size = localsha1size.1;
+			sha1size = format!("{expected_sha1}:{expected_size}")
+		};
 		let file_name = filename_without_extension(&url)?;
-		print!("Esd file from: {url}");
 
 		let cache_file_name = format!(
 			"{}-{}-{}-{}-{}.esd",
@@ -164,38 +167,36 @@ impl WinEsdDownloader {
 
 		// Check if file exists and verify hash
 		if cache_file_path.exists() {
-			let existing_sha1 = self.calc_sha1(&cache_file_path)?;
+
+			// check size missmatch first
 			let existing_size = fs::metadata(cache_file_path)?.len();
+			if existing_size != expected_size {
+				eprintln!(
+					"Found existing modified or corrupted file: {cache_file_path:?}.Got size:{existing_size}\nExpected:{expected_size}\n Deleting and downloading again.",
+				);
+				fs::remove_file(&cache_file_path)?;
+			} else {
+				// verify existing hash
+				let res = fdownload(
+					File::open(&cache_file_path)?,
+					None,
+					&expected_size,
+					&expected_sha1,
+					format!("Verifying (hashing) {:?}\n",cache_file_path.file_name().unwrap()).as_str(),
+				);
 
-			if existing_sha1.eq_ignore_ascii_case(&expected_sha1) && existing_size == expected_size
-			{
-				return Ok(cache_file_path.to_path_buf());
+				if let Err(err) = res {
+					println!("Failed to verify existing file\n:{err}");
+					fs::remove_file(&cache_file_path)?;
+				} else {
+					return Ok((cache_file_path.to_path_buf(), sha1size, url));
+				}
 			}
-
-			eprintln!(
-				"Found existing modified or corrupted file: {cache_file_path:?}.\nGot SHA1: {existing_sha1}\nExpected:{expected_sha1}\nGot size:{existing_size}\nExpected:{expected_size}\n Deleting and downloading again.",
-			);
-
-			fs::remove_file(&cache_file_path)?;
 		}
 
-		// Download the file
-		let mut response = self.http_client.get(url).send()?;
-		let mut file = File::create(&cache_file_path)?;
-		io::copy(&mut response, &mut file)?;
+		download_from_url(&url, cache_file_path, &expected_size, &expected_sha1)?;
 
-		// Verify downloaded file
-		let actual_sha1 = self.calc_sha1(&cache_file_path)?;
-		let existing_size = fs::metadata(cache_file_path)?.len();
-
-		if !(actual_sha1.eq_ignore_ascii_case(&expected_sha1) && existing_size == expected_size) {
-			fs::remove_file(&cache_file_path)?;
-			return Err(anyhow!(
-				"SHA-1 verification failed for {cache_file_path:?}.\nGot SHA1: {actual_sha1}\nExpected:{expected_sha1}\nGot size:{existing_size}\nExpected:{expected_size}\n Deleting and downloading again.",
-			));
-		}
-
-		Ok(cache_file_path.to_path_buf())
+		Ok((cache_file_path.to_path_buf(),sha1size, url))
 	}
 
 	fn find_file_info(&self, config: &Config) -> Result<FileInfo, Error> {
@@ -233,22 +234,5 @@ impl WinEsdDownloader {
 		};
 
 		Ok(file)
-	}
-
-	fn calc_sha1(&self, file_path: &Path) -> Result<String> {
-		let file = File::open(file_path)?;
-		let mut reader = BufReader::with_capacity(65536, file); // 64 KB buffer
-		let mut hasher = Sha1::new();
-		let mut buffer = [0; 65536];
-
-		loop {
-			let bytes_read = reader.read(&mut buffer)?;
-			if bytes_read == 0 {
-				break;
-			}
-			hasher.update(&buffer[..bytes_read]);
-		}
-
-		Ok(hex::encode(hasher.finalize()))
 	}
 }

@@ -8,7 +8,7 @@ A builder and downloader for windows images written in rust
 Usage: rinb.exe [OPTIONS]
 
 Options:
-      --config <CONFIG>          Path to config file [default: rinb.json]
+      --config <CONFIG>          Path to config file, {path}.lock{extension} will be used if it exists. [default: rinb.json]
       --out <OUT>                [default: out/devwin.iso]
       --cache-path <CACHE_PATH>  [default: ./.rinbcache/esd_cache]
   -h, --help                     Print help
