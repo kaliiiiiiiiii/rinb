@@ -157,7 +157,7 @@ fn main() -> Result<(), Error> {
 			)?;
 		}
 
-		// create install.esd
+		// create install.esd //TODO: use install_wim.write instead
 		{
 			let install_esd_path = tmp_dir_path.join("sources/install.esd");
 			let mut install_esd = wiml.create_new_wim(wimlib::CompressionType::Lzms)?;
