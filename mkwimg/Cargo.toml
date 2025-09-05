@@ -1,0 +1,14 @@
+[package]
+name = "mkwimg"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+documentation = "https://github.com/kaliiiiiiiiii/rinb"
+repository = "https://github.com/kaliiiiiiiiii/rinb"
+readme = "README.md"
+
+
+[dependencies]
+anyhow = "1.0.99"
+clap = { version = "4.5.47", features = ["derive"] }
+gpt = "4.1.0"

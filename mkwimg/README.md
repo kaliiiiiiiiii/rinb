@@ -1,0 +1,1 @@
+# Generates win.img based on a given directorys

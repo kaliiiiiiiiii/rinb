@@ -70,11 +70,27 @@
 				"program": "${workspaceFolder:rinb}/rinb/target/x86_64-pc-windows-gnu/debug/rinb.exe",
 				"args": [
 					"--config",
-					"${workspaceFolder:rinb}/rinb.json"
+					"${workspaceFolder:rinb}/rinb.json",
+					"--out",
+					"${workspaceFolder:rinb}out/devwin.img"
 				],
 				"cwd": "${workspaceFolder:rinb}",
 				"stopOnEntry": false,
 				"preLaunchTask": "rust: cargo build gnu",
+				"console": "integratedTerminal"
+			},
+			{
+				"name": "Debug mkwimg gnu",
+				"type": "lldb",
+				"request": "launch",
+				"program": "${workspaceFolder:rinb}/mkwimg/target/x86_64-pc-windows-gnu/debug/mkwimg.exe",
+				"args": [
+					"--dir",
+					"${workspaceFolder:rinb}/out/isodir"
+				],
+				"cwd": "${workspaceFolder:rinb}",
+				"stopOnEntry": false,
+				"preLaunchTask": "rust: cargo build mkwimg gnu",
 				"console": "integratedTerminal"
 			}
 		]
@@ -121,6 +137,26 @@
 					}
 				},
 				"label": "rust: cargo build gnu"
+			},
+			{
+				"type": "process",
+				"command": "cargo",
+				"args": [
+					"+stable-x86_64-pc-windows-gnu",
+					"build",
+					"--locked",
+					"--target",
+					"x86_64-pc-windows-gnu",
+					"-vv"
+				],
+				"group": "build",
+				"options": {
+					"cwd": "${workspaceFolder:rinb}/mkwimg",
+					"env": {
+						"CARGO_TARGET_DIR": "${workspaceFolder:rinb}/mkwimg/target"
+					}
+				},
+				"label": "rust: cargo build mkwimg gnu"
 			},
 			{
 				"type": "process",
