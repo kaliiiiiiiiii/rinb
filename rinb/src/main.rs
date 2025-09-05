@@ -95,7 +95,9 @@ fn main() -> Result<(), Error> {
 		fs::write(lock_path, data)?
 	}
 
-	let tmp_dir = &TmpDir::new()?;
+	//let tmp_dir = &TmpDir::new()?;
+	//let tmp_dir_path = &tmp_dir.path;
+	let tmp_dir_path = PathBuf::from(args.out).parent().unwrap().join("isodir"); // for debugging
 
 	// using wimlib
 	{
@@ -107,8 +109,9 @@ fn main() -> Result<(), Error> {
 
 		let wimf = wiml.open_wim(&TStr::from_path(esd).unwrap(), OpenFlags::empty())?;
 		let info = wimf.info();
+		println!("{:#?}", wimf.xml_data());
 
-		create_dir_all(tmp_dir.path.join("sources"))?;
+		create_dir_all(tmp_dir_path.join("sources"))?;
 
 		// 1: get base image
 		let base_image = wimf.select_image(ImageIndex::new(1).unwrap());
@@ -120,20 +123,23 @@ fn main() -> Result<(), Error> {
 
 		// create boot.wim
 		{
-			let boot_wim_path = tmp_dir.path.join("sources/boot.wim");
+			let boot_wim_path = tmp_dir_path.join("sources/boot.wim");
 			let mut boot_wim = wiml.create_new_wim(wimlib::CompressionType::Lzms)?;
 			boot_wim.set_output_chunk_size(128 * 1024)?; // 128k
 			//boot_wim.set_output_chunk_size(32 * 1024)?; // 32k, see https://github.com/ebiggers/wimlib/blob/e59d1de0f439d91065df7c47f647f546728e6a24/src/wim.c#L48-L83
 
-			// 2: add Windows PE to boot.wim
+			// 2: add Windows PE (no setup) to boot.wim // TODO: do we even need this? (probably not - to test)
+			// https://www.ntlite.com/community/index.php?threads/edit-image-name-description-and-flags.3714/post-43298
 			let win_pe = wimf.select_image(ImageIndex::new(2).unwrap());
 			let (name, descr, edition) = img_info(&win_pe);
+			// TODO: Windows PE (no setup) should be flag 9
 			edition.expect_equal(tstr!("WindowsPE"), "Unexpected image at index 2")?;
 			win_pe.export(&boot_wim, Some(name), Some(descr), ExportFlags::empty())?;
 
-			// 3: add Windows Setup to boot.wim
+			// 3: add Windows PE (with setup) to boot.wim
 			let win_setup = wimf.select_image(ImageIndex::new(3).unwrap());
 			let (name, descr, edition) = img_info(&win_setup);
+			// TODO: Windows PE (with setup) should be flag 2 (bootable)
 			edition.expect_equal(tstr!("WindowsPE"), "Unexpected image at index 3")?;
 			win_setup.export(&boot_wim, Some(name), Some(descr), ExportFlags::BOOT)?;
 
@@ -153,7 +159,7 @@ fn main() -> Result<(), Error> {
 
 		// create install.esd
 		{
-			let install_esd_path = tmp_dir.path.join("sources/install.esd");
+			let install_esd_path = tmp_dir_path.join("sources/install.esd");
 			let mut install_esd = wiml.create_new_wim(wimlib::CompressionType::Lzms)?;
 			// install_esd.register_progress_callback(progress_callback);
 			install_esd.set_output_chunk_size(128 * 1024)?; // 128k
@@ -210,7 +216,7 @@ fn main() -> Result<(), Error> {
 				| ExtractFlags::STRICT_SYMLINKS
 				| ExtractFlags::STRICT_SHORT_NAMES;
 			// TODO: add progress bar for extracting.
-			base_image.extract(&TStr::from_path(&tmp_dir.path).unwrap(), extract_flags)?;
+			base_image.extract(&TStr::from_path(&tmp_dir_path).unwrap(), extract_flags)?;
 		}
 		drop(wiml);
 	}
