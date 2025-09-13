@@ -249,6 +249,8 @@ pub fn pack(dir: &Path, out: &Path) -> Result<(), Error> {
 		fdisk = efip.fdisk(&device)?;
 		let fsf = FileSystem::new(fdisk, FsOptions::new())?;
 		let root = fsf.root_dir();
+
+		// fails with ;01HBdsDxe: failed to load Boot0001 "UEFI VBOX HARDDISK VB9a76c119-66b61545 " from PciRoot(0x0)/Pci(0xD,0x0)/Sata(0x0,0xFFFF,0x0): Not Found
 		dir2fat(&root, dir)?;
 	}
 	Ok(())
