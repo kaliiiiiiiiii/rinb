@@ -124,9 +124,9 @@ fn main() -> Result<(), Error> {
 		// create boot.wim
 		{
 			let boot_wim_path = tmp_dir_path.join("sources/boot.wim");
-			let mut boot_wim = wiml.create_new_wim(wimlib::CompressionType::Lzms)?;
-			boot_wim.set_output_chunk_size(128 * 1024)?; // 128k
-			//boot_wim.set_output_chunk_size(32 * 1024)?; // 32k, see https://github.com/ebiggers/wimlib/blob/e59d1de0f439d91065df7c47f647f546728e6a24/src/wim.c#L48-L83
+			let mut boot_wim = wiml.create_new_wim(wimlib::CompressionType::Lzx)?;
+			// boot_wim.set_output_chunk_size(128 * 1024)?; // 128k
+			boot_wim.set_output_chunk_size(32 * 1024)?; // 32k, see https://github.com/ebiggers/wimlib/blob/e59d1de0f439d91065df7c47f647f546728e6a24/src/wim.c#L48-L83
 
 			// 2: add Windows PE (no setup) to boot.wim // TODO: do we even need this? (probably not - to test)
 			// https://www.ntlite.com/community/index.php?threads/edit-image-name-description-and-flags.3714/post-43298
@@ -183,9 +183,12 @@ fn main() -> Result<(), Error> {
 							&install_esd,
 							Some(name),
 							Some(descr),
-							ExportFlags::BOOT,
+							ExportFlags::empty(),
 						)?;
 					}
+				} else {
+					// always export for testing
+					install_wim.export(&install_esd, Some(name), Some(descr), ExportFlags::empty())?;
 				}
 			}
 			if !install_found {

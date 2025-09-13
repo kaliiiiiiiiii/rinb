@@ -10,7 +10,7 @@ struct Args {
 	/// Path to installation media directory
 	#[arg(long, default_value = "out/isodir", alias = "d")]
 	dir: String,
-	#[arg(long, default_value = "out/devwin.vhd", alias = "o")]
+	#[arg(long, default_value = "out/devwin.img", alias = "o")]
 	out: String,
 }
 

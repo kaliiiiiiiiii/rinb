@@ -35,6 +35,7 @@ struct SPartition {
 	pub id: Cell<Option<u32>>,
 	pub startb: Cell<Option<u64>>,
 	pub endb: Cell<Option<u64>>,
+	pub align:Option<u64>
 }
 impl SPartition {
 	pub fn fdisk<'a>(&self, file: &'a File) -> Result<StreamSlice<&'a File>> {
@@ -164,9 +165,10 @@ pub fn pack(dir: &Path, out: &Path) -> Result<(), Error> {
 	}
 	// let mut img_file = File::create(out)?;
 
-	// create partitions based on https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/oem-deployment-of-windows-desktop-editions-sample-scripts?view=windows-11&preserve-view=true#createpartitions-uefitxt
-	// efi partition
-	//TODO: format as fat32
+	let part_align = 1 * 1024 * 1024; // 1MiB
+	let block_size = 512;
+	let lb_size = LogicalBlockSize::Lb512;
+
 	let efip = SPartition {
 		name: format!("efi"),
 		ptype: partition_types::EFI,
@@ -175,22 +177,22 @@ pub fn pack(dir: &Path, out: &Path) -> Result<(), Error> {
 		id: Cell::new(None),
 		startb: Cell::new(None),
 		endb: Cell::new(None),
+		align: Some(part_align/block_size)
 	};
-
 	let spartitions: Vec<&SPartition> = vec![&efip];
-
-	let block_size = 512;
-	let lb_size = LogicalBlockSize::Lb512;
-	let part_align = 1 * 1024 * 1024;
+	
 	let est_size: u64 = spartitions.iter().map(|p| p.size).sum::<u64>()
 		+ (spartitions.len() as u64 * part_align) * 2
 		+ (2 * 1024 * 1024);
 
 	// vhd + 1MiB buffer
-	let vhd_img = VhdImage::create_fixed(out.to_string_lossy(), est_size+1024 * 1024)
-		.map_err(|e| anyhow::anyhow!(e))?;
-	let mut img_file = VhdStream::new(&vhd_img);
-	// img_file.set_len(est_size)?; // 4GiB
+	//let vhd_img = VhdImage::create_fixed(out.to_string_lossy(), est_size+1024 * 1024)
+	//	.map_err(|e| anyhow::anyhow!(e))?;
+	//let mut img_file = VhdStream::new(&vhd_img);
+
+	let mut img_file = File::create(out)?;
+	
+	img_file.set_len(est_size)?; // 4GiB
 
 	let mbr = ProtectiveMBR::with_lb_size(
 		u32::try_from((est_size / block_size) - 1).unwrap_or(0xFF_FF_FF_FF),
@@ -210,7 +212,7 @@ pub fn pack(dir: &Path, out: &Path) -> Result<(), Error> {
 			spart.size,
 			spart.ptype.clone(),
 			spart.flags,
-			None,
+			spart.align,
 		)?;
 		spart.id.set(Some(id));
 	}

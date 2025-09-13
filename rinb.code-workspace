@@ -72,7 +72,7 @@
 					"--config",
 					"${workspaceFolder:rinb}/rinb.json",
 					"--out",
-					"${workspaceFolder:rinb}out/devwin.img"
+					"${workspaceFolder:rinb}/out/devwin.img"
 				],
 				"cwd": "${workspaceFolder:rinb}",
 				"stopOnEntry": false,

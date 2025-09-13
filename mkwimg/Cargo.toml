@@ -15,6 +15,7 @@ fatfs = "0.3.6"
 fscommon = "0.1.1"
 gpt = "4.1.0"
 indicatif = "0.18.0"
+mbrman = "0.6.1"
 rdisk = {path = "rdisk", default-features = false, features = ["user"]}
 
 # ntfs = "0.4.0"
