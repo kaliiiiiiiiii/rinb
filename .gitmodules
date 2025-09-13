@@ -4,9 +4,9 @@
 [submodule "hadris"]
 	path = hadris
 	url = https://github.com/kaliiiiiiiiii/hadris
-[submodule "mkwimg/mkwimg/rdisk"]
-	path = mkwimg/mkwimg/rdisk
-	url = https://github.com/vsrs/rdisk
 [submodule "mkwimg/rdisk"]
 	path = mkwimg/rdisk
 	url = https://github.com/kaliiiiiiiiii/rdisk
+[submodule "mkwimg/nt_native"]
+	path = mkwimg/nt_native
+	url = https://github.com/kaliiiiiiiiii/nt_native
