@@ -1,3 +1,5 @@
+use std::process::Command;
+
 mod download;
 
 mod config;
@@ -13,7 +15,7 @@ use hadris_pack::pack; */
 mod utils;
 use utils::{ExpectEqual, TmpDir, img_info, mk_pb, progress_callback};
 
-use anyhow::{Error, Result};
+use anyhow::{Error, Result, anyhow};
 
 use std::{
 	fs::{self, create_dir_all},
@@ -63,6 +65,34 @@ impl Args {
 	}
 }
 
+fn oscdimg(isodir: &Path, outiso: &Path) -> Result<()> {
+	let output = Command::new("oscdimg")
+		.args([
+			"-LDevWin_ISO_windows",
+			"-m",
+			"-u2",
+			"-h",
+			&isodir.to_string_lossy(),
+			&outiso.to_string_lossy(),
+			"-pEF",
+			&format!(
+				"-bootdata:2#p0,e,b{0}/boot/etfsboot.com#pEF,e,b{0}/efi/microsoft/boot/efisys.bin",
+				isodir.to_string_lossy()
+			),
+		])
+		.output()?; // capture output
+
+	if output.status.success() {
+		println!("ISO created successfully!");
+	} else {
+		eprintln!("oscdimg failed!");
+		let stderr = String::from_utf8_lossy(&output.stderr);
+		eprintln!("{}", stderr);
+	}
+
+	Ok(())
+}
+
 fn main() -> Result<(), Error> {
 	let args = Args::parse();
 	let mut config: Config;
@@ -97,7 +127,7 @@ fn main() -> Result<(), Error> {
 
 	//let tmp_dir = &TmpDir::new()?;
 	//let tmp_dir_path = &tmp_dir.path;
-	let tmp_dir_path = PathBuf::from(args.out).parent().unwrap().join("isodir"); // for debugging
+	let tmp_dir_path = PathBuf::from(&args.out).parent().unwrap().join("isodir"); // for debugging
 
 	// using wimlib
 	{
@@ -125,23 +155,38 @@ fn main() -> Result<(), Error> {
 		{
 			let boot_wim_path = tmp_dir_path.join("sources/boot.wim");
 			let mut boot_wim = wiml.create_new_wim(wimlib::CompressionType::Lzx)?;
-			// boot_wim.set_output_chunk_size(128 * 1024)?; // 128k
 			boot_wim.set_output_chunk_size(32 * 1024)?; // 32k, see https://github.com/ebiggers/wimlib/blob/e59d1de0f439d91065df7c47f647f546728e6a24/src/wim.c#L48-L83
 
-			// 2: add Windows PE (no setup) to boot.wim // TODO: do we even need this? (probably not - to test)
-			// https://www.ntlite.com/community/index.php?threads/edit-image-name-description-and-flags.3714/post-43298
-			let win_pe = wimf.select_image(ImageIndex::new(2).unwrap());
-			let (name, descr, edition) = img_info(&win_pe);
-			// TODO: Windows PE (no setup) should be flag 9
-			edition.expect_equal(tstr!("WindowsPE"), "Unexpected image at index 2")?;
-			win_pe.export(&boot_wim, Some(name), Some(descr), ExportFlags::empty())?;
+			{
+				// 2: validate (don't add) Windows PE (no setup) to boot.wim
+				let win_pe = wimf.select_image(ImageIndex::new(2).unwrap());
+				let (_, _, edition) = img_info(&win_pe);
+				// TODO: Windows PE (no setup) should be flag 9
+				edition.expect_equal(tstr!("WindowsPE"), "Unexpected image at index 2")?;
 
-			// 3: add Windows PE (with setup) to boot.wim
-			let win_setup = wimf.select_image(ImageIndex::new(3).unwrap());
-			let (name, descr, edition) = img_info(&win_setup);
-			// TODO: Windows PE (with setup) should be flag 2 (bootable)
-			edition.expect_equal(tstr!("WindowsPE"), "Unexpected image at index 3")?;
-			win_setup.export(&boot_wim, Some(name), Some(descr), ExportFlags::BOOT)?;
+				// https://www.ntlite.com/community/index.php?threads/edit-image-name-description-and-flags.3714/post-43298
+				let flag = win_pe.property(tstr!("FLAGS")).unwrap();
+				if !(flag == tstr!("9")) {
+					return Err(anyhow!(
+						"Expected image at index 2 to be Windows PE (FLAG=9)"
+					));
+				}
+				// win_pe.export(&boot_wim, Some(name), Some(descr), ExportFlags::empty())?;
+			}
+
+			{	// 3: add Windows PE (with setup) to boot.wim
+				
+				let win_setup = wimf.select_image(ImageIndex::new(3).unwrap());
+				let (name, descr, edition) = img_info(&win_setup);
+				let flag = win_setup.property(tstr!("FLAGS")).unwrap();
+				if !(flag == tstr!("2")) {
+					return Err(anyhow!(
+						"Expected image at index 3 to be Windows Setup (FLAG=2)"
+					));
+				}
+				edition.expect_equal(tstr!("WindowsPE"), "Unexpected image at index 3")?;
+				win_setup.export(&boot_wim, Some(name), Some(descr), ExportFlags::BOOT)?;
+			}
 
 			// write boot.wim to disk
 			let bar_msg = format!("compressing and writing boot.wim\n");
@@ -157,7 +202,7 @@ fn main() -> Result<(), Error> {
 			)?;
 		}
 
-		// create install.esd //TODO: use install_wim.write instead
+		// create install.esd
 		{
 			let install_esd_path = tmp_dir_path.join("sources/install.esd");
 			let mut install_esd = wiml.create_new_wim(wimlib::CompressionType::Lzms)?;
@@ -187,8 +232,8 @@ fn main() -> Result<(), Error> {
 						)?;
 					}
 				} else {
-					// always export for testing
-					install_wim.export(&install_esd, Some(name), Some(descr), ExportFlags::empty())?;
+					// export images for all editions
+					// install_wim.export(&install_esd, Some(name), Some(descr), ExportFlags::empty())?;
 				}
 			}
 			if !install_found {
@@ -225,6 +270,7 @@ fn main() -> Result<(), Error> {
 	}
 
 	// pack(&tmp_dir.path, &PathBuf::from(args.out))?;
+	oscdimg(&tmp_dir_path, Path::new(&args.out))?;
 
 	Ok(())
 }

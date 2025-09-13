@@ -1,9 +1,5 @@
 # Generates win.img based on a given directorys
 
-```bash
-oscdimg -LDevWin_ISO_windows -m -h out/isodir out/oscdev.iso -pEF -bootdata:2#p0,e,bout/isodir/boot/etfsboot.com#pEF,e,bout/isodir/efi/microsoft/boot/efisys.bin
-```
-
 Installing qemu for mingw
 ```bash
 pacman -S mingw-w64-ucrt-x86_64-qemu bsdtar
