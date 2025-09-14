@@ -1,165 +1,36 @@
-use anyhow::{Error, Result, anyhow};
+use anyhow::{Error, Result};
 use std::{
 	cell::Cell,
+	fmt::Debug,
 	fs::{self, File},
-	io::{Read, Write},
-	path::{Path, PathBuf},
+	path::Path,
 };
 
-use indicatif::{ProgressBar, ProgressStyle};
+use clap::ValueEnum;
 
-use fscommon::StreamSlice;
-
+use fatfs::{FatType, FileSystem, FormatVolumeOptions, FsOptions, ReadWriteSeek, format_volume};
 use gpt::{
-	GptConfig,
-	disk::LogicalBlockSize,
-	mbr::ProtectiveMBR,
-	partition::Partition,
-	partition_types::{self, Type as PType},
+	GptConfig, disk::LogicalBlockSize, mbr::ProtectiveMBR, partition::Partition, partition_types,
 };
-use rdisk::vhd::{VhdImage, VhdKind};
+use rdisk::vhd::VhdImage;
 
-use fatfs::{
-	Dir, FatType, FileSystem, FormatVolumeOptions, FsOptions, ReadWriteSeek, format_volume,
-};
-
+mod part;
+use part::SPartition;
 mod utils;
-use utils::VhdStream;
 
-#[derive()]
-struct SPartition {
-	pub name: String,
-	pub ptype: PType,
-	pub size: u64,
-	pub flags: u64,
-	pub id: Cell<Option<u32>>,
-	pub startb: Cell<Option<u64>>,
-	pub endb: Cell<Option<u64>>,
-	pub align:Option<u64>
+use utils::{VhdStream, dir2fat, dir2fatsize};
+
+#[derive(ValueEnum, Debug, Clone)]
+#[clap(rename_all = "kebab_case")]
+pub enum PackType {
+	VHD,
+	IMG,
 }
-impl SPartition {
-	pub fn fdisk<'a>(&self, file: &'a File) -> Result<StreamSlice<&'a File>> {
-		let start = self
-			.startb
-			.get()
-			.ok_or_else(|| anyhow!("Partition {} start unknown", self.name))?;
-		let end = self
-			.endb
-			.get()
-			.ok_or_else(|| anyhow!("Partition {} end not set", self.name))?;
+trait DReadWriteSeek: ReadWriteSeek + Debug {}
+impl<T: ReadWriteSeek + Debug> DReadWriteSeek for T {}
 
-		let slice = StreamSlice::new(file, start, end)?;
-		Ok(slice)
-	}
-}
-
-pub fn dir2fatsize(path: impl AsRef<Path>) -> Result<u64> {
-	let cluster_size = 32 * 1024; // https://github.com/rafalh/rust-fatfs/blob/4eccb50d011146fbed20e133d33b22f3c27292e7/src/boot_sector.rs#L490
-
-	let mut total_size = 0;
-	let mut stack = vec![path.as_ref().to_path_buf()];
-
-	while let Some(current_path) = stack.pop() {
-		let entries = fs::read_dir(&current_path)?;
-
-		for entry in entries {
-			let entry = entry?;
-
-			let meta = entry.metadata()?;
-
-			let name_len = entry.file_name().to_string_lossy().len();
-			let lfn_entries = (name_len + 12) / 13; // FAT32 long name entries
-			let dir_entry_size = 32 + (lfn_entries as u64 * 32);
-
-			if meta.is_dir() {
-				// Add directory overhead (like "." and "..")
-				total_size += 32 + dir_entry_size;
-				stack.push(entry.path());
-			} else {
-				let file_size = meta.len();
-				let clusters = (file_size + cluster_size - 1) / cluster_size;
-				total_size += clusters * cluster_size + dir_entry_size;
-			}
-		}
-	}
-
-	Ok(total_size)
-}
-
-fn dir2fat<'a, T, P>(fs_dir: &Dir<'a, T>, src_path: P) -> Result<(), Error>
-where
-	T: ReadWriteSeek + 'a,
-	P: AsRef<Path>,
-{
-	let src_path = src_path.as_ref();
-
-	// Collect all files first to get total size for progress bar
-	let mut total_bytes = 0;
-	let mut stack: Vec<PathBuf> = vec![src_path.to_path_buf()];
-
-	while let Some(path) = stack.pop() {
-		if path.is_dir() {
-			for entry in fs::read_dir(&path)? {
-				let entry = entry?;
-				stack.push(entry.path());
-			}
-		} else if path.is_file() {
-			let size = path.metadata().map(|m| m.len()).unwrap_or(0);
-			total_bytes += size;
-		}
-	}
-
-	// Initialize progress bar
-	let pb = ProgressBar::new(total_bytes);
-	pb.set_message("Writing dir to FAT32");
-	pb.set_style(
-    ProgressStyle::default_bar()
-        .template(
-            "{msg} {spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {binary_bytes}/{binary_total_bytes} ({eta}) {binary_bytes_per_sec}",
-        )
-        .unwrap()
-        .progress_chars("#>-"),
-    );
-
-	// Reset stack for actual copy
-	let mut stack: Vec<(PathBuf, Dir<'a, T>)> = vec![];
-
-	for entry in fs::read_dir(src_path)? {
-		let entry = entry?;
-		stack.push((entry.path(), fs_dir.clone()));
-	}
-
-	while let Some((path, parent_dir)) = stack.pop() {
-		if path.is_dir() {
-			let dir_name = path.file_name().unwrap().to_str().unwrap();
-			let new_dir = parent_dir.create_dir(dir_name)?;
-
-			for entry in fs::read_dir(&path)? {
-				let entry = entry?;
-				stack.push((entry.path(), new_dir.clone()));
-			}
-		} else if path.is_file() {
-			let file_name = path.file_name().unwrap().to_str().unwrap();
-			let mut src_file = fs::File::open(&path)?;
-			let mut fs_file = parent_dir.create_file(file_name)?;
-
-			let mut buffer = vec![0u8; 4 * 1024 * 1024]; // 4 MB buffer
-			loop {
-				let n = src_file.read(&mut buffer)?;
-				if n == 0 {
-					break;
-				}
-				fs_file.write_all(&buffer[..n])?;
-				pb.inc(n as u64);
-			}
-		}
-	}
-
-	pb.finish_with_message("Writing dir to FAT");
-	Ok(())
-}
-
-pub fn pack(dir: &Path, out: &Path) -> Result<(), Error> {
+// packs an installation dir to out as PackType
+pub fn pack(dir: &Path, out: &Path, o_type: PackType) -> Result<(), Error> {
 	if out.exists() {
 		fs::remove_file(out)?;
 	}
@@ -177,22 +48,28 @@ pub fn pack(dir: &Path, out: &Path) -> Result<(), Error> {
 		id: Cell::new(None),
 		startb: Cell::new(None),
 		endb: Cell::new(None),
-		align: Some(part_align/block_size)
+		align: Some(part_align / block_size),
 	};
 	let spartitions: Vec<&SPartition> = vec![&efip];
-	
+
 	let est_size: u64 = spartitions.iter().map(|p| p.size).sum::<u64>()
 		+ (spartitions.len() as u64 * part_align) * 2
 		+ (2 * 1024 * 1024);
 
 	// vhd + 1MiB buffer
-	//let vhd_img = VhdImage::create_fixed(out.to_string_lossy(), est_size+1024 * 1024)
-	//	.map_err(|e| anyhow::anyhow!(e))?;
-	//let mut img_file = VhdStream::new(&vhd_img);
-
-	let mut img_file = File::create(out)?;
-	
-	img_file.set_len(est_size)?; // 4GiB
+	let mut img_file: Box<dyn DReadWriteSeek>;
+	match o_type {
+		PackType::VHD => {
+			let img = VhdImage::create_fixed(out.to_string_lossy(), est_size + 1024 * 1024)
+				.map_err(|e| anyhow::anyhow!(e))?;
+			img_file = Box::new(VhdStream::new(img));
+		}
+		PackType::IMG => {
+			let file = File::create(out)?;
+			file.set_len(est_size)?; // 4GiB
+			img_file = Box::new(file);
+		}
+	}
 
 	let mbr = ProtectiveMBR::with_lb_size(
 		u32::try_from((est_size / block_size) - 1).unwrap_or(0xFF_FF_FF_FF),
@@ -252,7 +129,15 @@ pub fn pack(dir: &Path, out: &Path) -> Result<(), Error> {
 		let fsf = FileSystem::new(fdisk, FsOptions::new())?;
 		let root = fsf.root_dir();
 
-		// fails with ;01HBdsDxe: failed to load Boot0001 "UEFI VBOX HARDDISK VB9a76c119-66b61545 " from PciRoot(0x0)/Pci(0xD,0x0)/Sata(0x0,0xFFFF,0x0): Not Found
+		// fails with blank blue screen
+		// boots when autorun.inf (referencing Setup.exe) is removed
+		// then fails with:
+		// A media driver your computer needs is missing. This could be a DVD, USB or Hard disk driver. If you have a CD, DVD, or USB flash drive with the driver on it, please insert it now.
+		// Note: If the installation media for Windows is in the DVD drive or on a USB drive, you can safely remove it for this step.
+		// Next:
+		// No device drivers were found. Make sure that the installation media contains the correct drivers, and then click OK
+
+		// => doesn't find setup.exe because it's within hidden system efi partition?
 		dir2fat(&root, dir)?;
 	}
 	Ok(())

@@ -1,44 +1,41 @@
-use std::process::Command;
-
-mod download;
-
-mod config;
-use config::Config;
-
-mod esd_downloader;
-use esd_downloader::WinEsdDownloader;
-
-/*
-mod hadris_pack;
-use hadris_pack::pack; */
-
-mod utils;
-use utils::{ExpectEqual, TmpDir, img_info, mk_pb, progress_callback};
-
-use anyhow::{Error, Result, anyhow};
-
+use anyhow::{Error, Result};
 use std::{
-	fs::{self, create_dir_all},
-	num::NonZeroUsize,
+	fs,
 	path::{Path, PathBuf},
-	thread,
-};
-use wimlib::{
-	ExportFlags, ExtractFlags, ImageIndex, OpenFlags, WimLib, WriteFlags, string::TStr, tstr,
+	time::Instant,
 };
 
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use serde_json;
 use serde_json5;
 
+use mkwimg::{PackType, pack};
+
+use rinb::config::Config;
+
+use rinb::esd_downloader::WinEsdDownloader;
+
+use rinb::esd::EsdFile;
+use rinb::pack::mkiso;
+
+#[derive(ValueEnum, Debug, Clone)]
+#[clap(rename_all = "kebab_case")]
+enum OutType {
+	ISO,
+	VHD,
+	IMG,
+}
+
 #[derive(Parser, Debug)]
-#[command(version, about = "App with JSON config")]
+#[command(version, about = "Builds a customized windows installation")]
 struct Args {
 	/// Path to config file, {path}.lock{extension} will be used if it exists.
 	#[arg(long, default_value = "rinb.json", alias = "c")]
 	config: String,
 	#[arg(long, default_value = "out/devwin.iso", alias = "o")]
 	out: String,
+	#[arg(long = "type", default_value = "iso", alias = "t")]
+	o_type: OutType,
 	#[arg(long, default_value = "./.rinbcache/esd_cache", alias = "cc")]
 	cache_path: String,
 }
@@ -63,34 +60,6 @@ impl Args {
 
 		parent.join(new_name)
 	}
-}
-
-fn oscdimg(isodir: &Path, outiso: &Path) -> Result<()> {
-	let output = Command::new("oscdimg")
-		.args([
-			"-LDevWin_ISO_windows",
-			"-m",
-			"-u2",
-			"-h",
-			&isodir.to_string_lossy(),
-			&outiso.to_string_lossy(),
-			"-pEF",
-			&format!(
-				"-bootdata:2#p0,e,b{0}/boot/etfsboot.com#pEF,e,b{0}/efi/microsoft/boot/efisys.bin",
-				isodir.to_string_lossy()
-			),
-		])
-		.output()?; // capture output
-
-	if output.status.success() {
-		println!("ISO created successfully!");
-	} else {
-		eprintln!("oscdimg failed!");
-		let stderr = String::from_utf8_lossy(&output.stderr);
-		eprintln!("{}", stderr);
-	}
-
-	Ok(())
 }
 
 fn main() -> Result<(), Error> {
@@ -129,148 +98,22 @@ fn main() -> Result<(), Error> {
 	//let tmp_dir_path = &tmp_dir.path;
 	let tmp_dir_path = PathBuf::from(&args.out).parent().unwrap().join("isodir"); // for debugging
 
-	// using wimlib
-	{
-		let wiml = WimLib::default();
+	println!("Starting to build");
+	let now = Instant::now();
 
-		let n_threads = thread::available_parallelism()
-			.unwrap_or(NonZeroUsize::new(8).unwrap())
-			.get() as u32;
-
-		let wimf = wiml.open_wim(&TStr::from_path(esd).unwrap(), OpenFlags::empty())?;
-		let info = wimf.info();
-		println!("{:#?}", wimf.xml_data());
-
-		create_dir_all(tmp_dir_path.join("sources"))?;
-
-		// 1: get base image
-		let base_image = wimf.select_image(ImageIndex::new(1).unwrap());
-		let (name, _, _) = img_info(&base_image);
-		name.expect_equal(
-			tstr!("Windows Setup Media"),
-			"Unexpected image name at index 1",
-		)?;
-
-		// create boot.wim
-		{
-			let boot_wim_path = tmp_dir_path.join("sources/boot.wim");
-			let mut boot_wim = wiml.create_new_wim(wimlib::CompressionType::Lzx)?;
-			boot_wim.set_output_chunk_size(32 * 1024)?; // 32k, see https://github.com/ebiggers/wimlib/blob/e59d1de0f439d91065df7c47f647f546728e6a24/src/wim.c#L48-L83
-
-			{
-				// 2: validate (don't add) Windows PE (no setup) to boot.wim
-				let win_pe = wimf.select_image(ImageIndex::new(2).unwrap());
-				let (_, _, edition) = img_info(&win_pe);
-				// TODO: Windows PE (no setup) should be flag 9
-				edition.expect_equal(tstr!("WindowsPE"), "Unexpected image at index 2")?;
-
-				// https://www.ntlite.com/community/index.php?threads/edit-image-name-description-and-flags.3714/post-43298
-				let flag = win_pe.property(tstr!("FLAGS")).unwrap();
-				if !(flag == tstr!("9")) {
-					return Err(anyhow!(
-						"Expected image at index 2 to be Windows PE (FLAG=9)"
-					));
-				}
-				// win_pe.export(&boot_wim, Some(name), Some(descr), ExportFlags::empty())?;
-			}
-
-			{	// 3: add Windows PE (with setup) to boot.wim
-				
-				let win_setup = wimf.select_image(ImageIndex::new(3).unwrap());
-				let (name, descr, edition) = img_info(&win_setup);
-				let flag = win_setup.property(tstr!("FLAGS")).unwrap();
-				if !(flag == tstr!("2")) {
-					return Err(anyhow!(
-						"Expected image at index 3 to be Windows Setup (FLAG=2)"
-					));
-				}
-				edition.expect_equal(tstr!("WindowsPE"), "Unexpected image at index 3")?;
-				win_setup.export(&boot_wim, Some(name), Some(descr), ExportFlags::BOOT)?;
-			}
-
-			// write boot.wim to disk
-			let bar_msg = format!("compressing and writing boot.wim\n");
-			let pb = mk_pb(&bar_msg);
-			boot_wim.register_progress_callback(move |msg| {
-				progress_callback(msg, &pb, bar_msg.clone())
-			});
-
-			boot_wim.select_all_images().write(
-				&TStr::from_path(boot_wim_path).unwrap(),
-				WriteFlags::empty(),
-				n_threads,
-			)?;
-		}
-
-		// create install.esd
-		{
-			let install_esd_path = tmp_dir_path.join("sources/install.esd");
-			let mut install_esd = wiml.create_new_wim(wimlib::CompressionType::Lzms)?;
-			// install_esd.register_progress_callback(progress_callback);
-			install_esd.set_output_chunk_size(128 * 1024)?; // 128k
-
-			// 0 to image_count: add to install.esd for image which matches EDITIONID
-			let mut install_found = false;
-			for index in 4..=info.image_count {
-				let install_wim = wimf.select_image(ImageIndex::new(index).unwrap());
-
-				// only  add images where editionID matches
-				let (name, descr, edition) = img_info(&install_wim);
-				if edition.to_str() == config.edition {
-					if install_found {
-						return Err(Error::msg(format!(
-							"Multiple install images matching selected edition ({}) found",
-							config.edition
-						)));
-					} else {
-						install_found = true;
-						install_wim.export(
-							&install_esd,
-							Some(name),
-							Some(descr),
-							ExportFlags::empty(),
-						)?;
-					}
-				} else {
-					// export images for all editions
-					// install_wim.export(&install_esd, Some(name), Some(descr), ExportFlags::empty())?;
-				}
-			}
-			if !install_found {
-				return Err(Error::msg(format!(
-					"No install images matching selected edition ({}) found",
-					config.edition
-				)));
-			}
-
-			// write install.esd to disk
-			let bar_msg = format!("compressing and writing install.esd\n");
-			let pb = mk_pb(&bar_msg);
-			install_esd.register_progress_callback(move |msg| {
-				progress_callback(msg, &pb, bar_msg.clone())
-			});
-			install_esd.select_all_images().write(
-				&TStr::from_path(install_esd_path).unwrap(),
-				WriteFlags::empty(),
-				n_threads,
-			)?;
-		}
-
-		{
-			// extract base image to disk
-			let extract_flags = ExtractFlags::STRICT_ACLS
-				// ExtractFlags::NTFS |
-				| ExtractFlags::STRICT_GLOB
-				| ExtractFlags::STRICT_SYMLINKS
-				| ExtractFlags::STRICT_SHORT_NAMES;
-			// TODO: add progress bar for extracting.
-			base_image.extract(&TStr::from_path(&tmp_dir_path).unwrap(), extract_flags)?;
-		}
-		drop(wiml);
-	}
+	// create install dir from esd
+	let esdf = EsdFile::new(&esd)?;
+	// println!("{}", esdf.xml()?);
+	esdf.install_dir(&tmp_dir_path, &config.edition)?;
 
 	// pack(&tmp_dir.path, &PathBuf::from(args.out))?;
-	oscdimg(&tmp_dir_path, Path::new(&args.out))?;
 
+	let outp = Path::new(&args.out);
+	match args.o_type {
+		OutType::ISO => mkiso(&tmp_dir_path, outp)?,
+		OutType::VHD => pack(&tmp_dir_path, outp, PackType::VHD)?,
+		OutType::IMG => pack(&tmp_dir_path, outp, PackType::IMG)?,
+	}
+	println!("Building took {:.2?}", now.elapsed());
 	Ok(())
 }

@@ -23,7 +23,7 @@
 		],
 		"files.associations": {
 			"stdbool.h": "c",
-			"rinb.json":"jsonc"
+			"rinb.json": "jsonc"
 		},
 		"rust-analyzer.cargo.target": "x86_64-pc-windows-gnu",
 		"rust-analyzer.cargo.extraEnv": {
@@ -87,6 +87,24 @@
 				"args": [
 					"--dir",
 					"${workspaceFolder:rinb}/out/isodir"
+				],
+				"cwd": "${workspaceFolder:rinb}",
+				"stopOnEntry": false,
+				"preLaunchTask": "rust: cargo build mkwimg gnu",
+				"console": "integratedTerminal"
+			},
+			{
+				"name": "Debug vhd mkwimg gnu",
+				"type": "lldb",
+				"request": "launch",
+				"program": "${workspaceFolder:rinb}/mkwimg/target/x86_64-pc-windows-gnu/debug/mkwimg.exe",
+				"args": [
+					"--dir",
+					"${workspaceFolder:rinb}/out/isodir",
+					"--out",
+					"${workspaceFolder:rinb}/out/devwin.vhd",
+					"--type",
+					"vhd"
 				],
 				"cwd": "${workspaceFolder:rinb}",
 				"stopOnEntry": false,
@@ -172,9 +190,9 @@
 				],
 				"group": "build",
 				"options": {
-					"cwd": "${workspaceFolder:rinb}/rinb",
+					"cwd": "${workspaceFolder:rinb}/mkwing",
 					"env": {
-						"CARGO_TARGET_DIR": "${workspaceFolder:rinb}/rinb/target"
+						"CARGO_TARGET_DIR": "${workspaceFolder:rinb}/mkwing/target"
 					}
 				},
 				"label": "rust: cargo release"
@@ -192,8 +210,12 @@
 				"label": "flamegraph (admin)",
 				"command": "Start-Process",
 				"args": [
-					"-Verb", "RunAs", "-Wait", "powershell", "-ArgumentList", "-NoExit -WindowStyle Maximized cd \"${workspaceFolder:rinb}/rinb\";Clear-Host; flamegraph -v -- ${workspaceFolder:rinb}/rinb/target/x86_64-pc-windows-gnu/debug/rinb.exe  --config  \"${workspaceFolder:rinb}/rinb.json\"; Read-Host flamegraph Exited with $LASTEXITCODE, Press ENTER to exit or CTRL+c to stay in console; exit",
-					 
+					"-Verb",
+					"RunAs",
+					"-Wait",
+					"powershell",
+					"-ArgumentList",
+					"-NoExit -WindowStyle Maximized cd \"${workspaceFolder:rinb}/rinb\";Clear-Host; flamegraph -v -- ${workspaceFolder:rinb}/rinb/target/x86_64-pc-windows-gnu/debug/rinb.exe  --config  \"${workspaceFolder:rinb}/rinb.json\"; Read-Host flamegraph Exited with $LASTEXITCODE, Press ENTER to exit or CTRL+c to stay in console; exit",
 				],
 				"group": "test",
 				"isBackground": true,

@@ -3,13 +3,12 @@ use crate::config::{Config, MajorWinVer};
 use crate::download::{download_from_url, fdownload};
 
 use std::fs::{self, File};
-use std::io::{self, BufReader, Cursor, Read, Write};
+use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
 use std::string::String;
 
 use anyhow::{Error, Ok, Result, anyhow};
 use roxmltree::Document;
-use tempfile::NamedTempFile;
 
 #[derive(Debug)]
 pub struct FileInfo {
@@ -114,16 +113,6 @@ impl WinEsdDownloader {
 		let xml_str = String::from_utf8(xml_bytes.clone())?;
 		return Ok(find_files(&xml_str)?);
 	}
-	/// returns path:NamedTempFile, sha1size:String, url:String
-	pub fn download_tmp(&self, config: &Config) -> Result<(NamedTempFile, String, String)> {
-		let (path, sha1size, url) = self.download(config)?;
-		let mut tmp_file = NamedTempFile::new()?;
-
-		let mut source_file = File::open(path)?;
-		io::copy(&mut source_file, &mut tmp_file)?;
-
-		Ok((tmp_file, sha1size, url))
-	}
 	/// returns path:PathBuf, sha1size:String, url:String
 	pub fn download(&self, config: &Config) -> Result<(PathBuf, String, String), Error> {
 		let (expected_size, expected_sha1, url, sha1size): (u64, String, String, String);
@@ -167,7 +156,6 @@ impl WinEsdDownloader {
 
 		// Check if file exists and verify hash
 		if cache_file_path.exists() {
-
 			// check size missmatch first
 			let existing_size = fs::metadata(cache_file_path)?.len();
 			if existing_size != expected_size {
@@ -182,7 +170,11 @@ impl WinEsdDownloader {
 					None,
 					&expected_size,
 					&expected_sha1,
-					format!("Verifying (hashing) {:?}\n",cache_file_path.file_name().unwrap()).as_str(),
+					format!(
+						"Verifying (hashing) {:?}\n",
+						cache_file_path.file_name().unwrap()
+					)
+					.as_str(),
 				);
 
 				if let Err(err) = res {
@@ -196,7 +188,7 @@ impl WinEsdDownloader {
 
 		download_from_url(&url, cache_file_path, &expected_size, &expected_sha1)?;
 
-		Ok((cache_file_path.to_path_buf(),sha1size, url))
+		Ok((cache_file_path.to_path_buf(), sha1size, url))
 	}
 
 	fn find_file_info(&self, config: &Config) -> Result<FileInfo, Error> {

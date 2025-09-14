@@ -16,3 +16,5 @@ TDISK=tempdisk.img
 cat /ucrt64/share/qemu/edk2-i386-vars.fd /ucrt64/share/qemu/edk2-x86_64-code.fd > edk2-x86_64.fd
 qemu-system-x86_64 -m 3G -smp 4 -bios edk2-x86_64.fd -drive if=virtio,format=raw,file="$WDISK" -drive if=virtio,file=$TDISK,format=raw -serial mon:stdio -device isa-debug-exit,iobase=0xf4,iosize=0x04 -d guest_errors,int,pcall,cpu_reset -D qemu.log -device ich9-intel-hda -device hda-output -usb -device usb-tablet -accel whpx,kernel-irqchip=off
 ```
+
+![diskpart vhd output](diskpart_vhd_output.png)

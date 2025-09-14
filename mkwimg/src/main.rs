@@ -1,6 +1,6 @@
 use anyhow::{Error, Ok, Result};
-use mkwimg::pack;
-use std::path::{Path, PathBuf};
+use mkwimg::{PackType, pack};
+use std::path::Path;
 
 use clap::Parser;
 
@@ -12,10 +12,12 @@ struct Args {
 	dir: String,
 	#[arg(long, default_value = "out/devwin.img", alias = "o")]
 	out: String,
+	#[arg(long = "type", default_value = "vhd", alias = "t")]
+	o_type: PackType,
 }
 
 fn main() -> Result<(), Error> {
 	let args = Args::parse();
-	pack(&Path::new(&args.dir), &Path::new(&args.out))?;
+	pack(&Path::new(&args.dir), &Path::new(&args.out), args.o_type)?;
 	Ok(())
 }
