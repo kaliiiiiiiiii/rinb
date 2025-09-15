@@ -55,7 +55,9 @@ pub fn pack(dir: &Path, out: &Path, o_type: PackType) -> Result<(), Error> {
 	let est_size: u64 = spartitions.iter().map(|p| p.size).sum::<u64>()
 		+ (spartitions.len() as u64 * part_align) * 2
 		+ (2 * 1024 * 1024);
-
+	if out.exists() {
+		fs::remove_file(out)?;
+	}
 	// vhd + 1MiB buffer
 	let mut img_file: Box<dyn DReadWriteSeek>;
 	match o_type {
@@ -138,6 +140,9 @@ pub fn pack(dir: &Path, out: &Path, o_type: PackType) -> Result<(), Error> {
 		// No device drivers were found. Make sure that the installation media contains the correct drivers, and then click OK
 
 		// => doesn't find setup.exe because it's within hidden system efi partition?
+
+		// in winpe, fails with
+		// (X:\$windows~bt\Windows). Windows PE cannot start because the actual SYSTEMROOT directory (X:\windows) is different from the configured one This can be configured from dism.exe with the /set-targetpath command.
 		dir2fat(&root, dir)?;
 	}
 	Ok(())

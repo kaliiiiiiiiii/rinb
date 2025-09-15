@@ -49,16 +49,25 @@ impl<'a> EsdFile<'a> {
 	}
 
 	// winPE image (index 2)
-	pub fn win_pe(&self) -> Result<Image<'_>, Error> {
+	pub fn win_pe(&self) -> Result<Wim, Error> {
+		let boot_pe = self.wiml.create_new_wim(wimlib::CompressionType::Lzx)?;
+		boot_pe.set_output_chunk_size(32 * 1024)?; // 32k, see https://github.com/ebiggers/wimlib/blob/e59d1de0f439d91065df7c47f647f546728e6a24/src/wim.c#L48-L83
+
 		let win_pe = self.wim.select_image(ImageIndex::new(2).unwrap());
-		let edition = win_pe.property(tstr!("WINDOWS/EDITIONID")).unwrap();
+		let (name, descr, edition) = (
+			win_pe.property(tstr!("NAME")).unwrap(),
+			win_pe.property(tstr!("DESCRIPTION")).unwrap(),
+			win_pe.property(tstr!("WINDOWS/EDITIONID")).unwrap(),
+		);
 		let flag = win_pe.property(tstr!("FLAGS")).unwrap();
 		flag.expect_equal(tstr!("9"), "Expected image at index 2 to be WindowsPE")?;
 		edition.expect_equal(
 			tstr!("WindowsPE"),
 			"Expected image at index 3 to be WindowsPE based",
 		)?;
-		Ok(win_pe)
+
+		win_pe.export(&boot_pe, Some(name), Some(descr), ExportFlags::BOOT)?;
+		Ok(boot_pe)
 	}
 
 	// boot.wim image (index 3)
@@ -120,6 +129,8 @@ impl<'a> EsdFile<'a> {
 
 		// write boot.wim
 		let boot_wim = self.boot()?;
+		// let boot_wim = self.win_pe()?; // write win_pe for testing instead
+
 		self.write(&boot_wim.select_all_images(), &boot_wim_path)?;
 
 		// write install.esd to dism
