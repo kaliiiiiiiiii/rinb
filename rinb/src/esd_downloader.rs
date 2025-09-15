@@ -1,6 +1,7 @@
 use crate::config::{Config, MajorWinVer};
 
 use crate::download::{download_from_url, fdownload};
+use crate::utils::ExpectEqual;
 
 use std::fs::{self, File};
 use std::io::{Cursor, Read};
@@ -104,8 +105,8 @@ impl WinEsdDownloader {
 
 	pub fn files(&self, win_ver: &MajorWinVer) -> Result<Vec<FileInfo>, Error> {
 		let url = match win_ver {
-			MajorWinVer::Win10 => "https://go.microsoft.com/fwlink/?LinkId=2156292",
-			MajorWinVer::Win11 => "https://go.microsoft.com/fwlink/?LinkId=841361",
+			MajorWinVer::Win10 => "https://go.microsoft.com/fwlink/?LinkId=841361",
+			MajorWinVer::Win11 => "https://go.microsoft.com/fwlink/?LinkId=2156292",
 		};
 		let response = self.http_client.get(url).send()?.bytes()?;
 
@@ -132,10 +133,10 @@ impl WinEsdDownloader {
 			let localsha1size = (file_info.sha1, file_info.size);
 
 			if let Some(expected_sha1size) = config.parse_sha1size().ok() {
-				assert_eq!(
-					localsha1size, expected_sha1size,
-					"Mismatch between config.sha1size and actual file info reported by the endpoint"
-				);
+				&localsha1size.expect_equal(
+					expected_sha1size,
+					"Mismatch between config.sha1size and actual file info reported by the endpoint",
+				)?;
 			}
 			expected_sha1 = localsha1size.0;
 			expected_size = localsha1size.1;

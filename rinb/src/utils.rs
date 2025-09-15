@@ -1,7 +1,6 @@
-use anyhow::{Error, Result};
+use anyhow::{Error, Result, anyhow};
 use std::{env, fs, io, path::PathBuf};
 use uuid::Uuid;
-use wimlib::string::TStr;
 
 pub struct TmpDir {
 	pub path: PathBuf,
@@ -16,10 +15,6 @@ impl TmpDir {
 			path: tmp_path.to_path_buf(),
 		})
 	}
-	pub fn tstr(self) -> Result<Box<TStr>, Box<dyn std::error::Error>> {
-		let tstr = TStr::from_path(&self.path)?;
-		Ok(tstr)
-	}
 }
 
 impl Drop for TmpDir {
@@ -30,18 +25,18 @@ impl Drop for TmpDir {
 }
 
 pub trait ExpectEqual: Sized {
-	fn expect_equal<M: AsRef<str>>(self, expected: Self, message: M) -> Result<Self, Error>;
+	fn expect_equal<M: AsRef<str>>(&self, expected: Self, message: M) -> Result<&Self, Error>;
 }
 
 impl<T: PartialEq + std::fmt::Debug> ExpectEqual for T {
-	fn expect_equal<M: AsRef<str>>(self, expected: Self, message: M) -> Result<Self, Error> {
-		if self != expected {
-			panic!(
+	fn expect_equal<M: AsRef<str>>(&self, expected: Self, message: M) -> Result<&Self, Error> {
+		if self != &expected {
+			return Err(anyhow!(
 				"{}: expected {:?}, got {:?}",
 				message.as_ref(),
 				expected,
 				self
-			);
+			));
 		}
 		Ok(self)
 	}

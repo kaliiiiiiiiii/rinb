@@ -46,3 +46,4 @@ sha1 = "0.10.6"
 hex = "0.4.3"
 cab = "0.6.0"
 indicatif = "0.18.0"
+uuid = { version = "1.18.0", features = ["v4"] }

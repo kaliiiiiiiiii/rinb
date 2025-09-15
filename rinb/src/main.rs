@@ -106,8 +106,6 @@ fn main() -> Result<(), Error> {
 	// println!("{}", esdf.xml()?);
 	esdf.install_dir(&tmp_dir_path, &config.edition)?;
 
-	// pack(&tmp_dir.path, &PathBuf::from(args.out))?;
-
 	let outp = Path::new(&args.out);
 	match args.o_type {
 		OutType::ISO => mkiso(&tmp_dir_path, outp)?,
