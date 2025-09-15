@@ -42,7 +42,7 @@ pub fn pack(dir: &Path, out: &Path, o_type: PackType) -> Result<(), Error> {
 
 	let efip = SPartition {
 		name: format!("efi"),
-		ptype: partition_types::EFI,
+		ptype: partition_types::BASIC, // windows cannot find the installation media if partition_types::EFI is used
 		size: dir2fatsize(dir)?,
 		flags: 0,
 		id: Cell::new(None),
