@@ -19,7 +19,7 @@ A sample config file can be found at [rinb.json](rinb.json) ([json-schema](rinb_
 
 # TODO
 - support caching built base `install.wim`, `boot.wim` and `base.wim`
-- build raw disk image (see [rinb/src/rdisk_pack.rs](rinb/src/rdisk_pack.rs)) based on install.wim for testing.
+- implement recovering from interrupted downloads over `Accept-Ranges: bytes`, using [reader.chain](https://doc.rust-lang.org/std/io/struct.Chain.html)
 - support other targets than ["x86_64-pc-windows-gnu", "x86_64-unknown-linux-gnu"]
 
 # Building
