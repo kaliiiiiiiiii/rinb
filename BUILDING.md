@@ -1,3 +1,8 @@
+## Cloning this repository
+```bash
+git clone --recursive https://github.com/kaliiiiiiiiii/rinb
+```
+
 # Install dependencies
 
 Install deps for build target
@@ -47,5 +52,5 @@ cargo install --locked cargo-about
 Generate [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)
 ```bash
 cargo about generate --manifest-path ./rinb/Cargo.toml ./template/NOTICE.md.hbs --output-file ./NOTICE.md
-cargo about generate --manifest-path ./toolsnt/Cargo.toml ./toolsnt/template/NOTICE.md.hbs --output-file ./toolsnt/NOTICE.md
+cargo about generate --manifest-path ./rinb/third_party/toolsnt/Cargo.toml ./rinb/third_party/toolsnt/template/NOTICE.md.hbs --output-file ./rinb/third_party/toolsnt/NOTICE.md
 ```

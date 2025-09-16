@@ -5,8 +5,8 @@
 			"name": "rinb"
 		},
 		{
-			"path": "toolsnt/wimlib",
-			"name": "wimlib"
+			"path": "rinb/third_party/toolsnt",
+			"name": "toolsnt"
 		}
 	],
 	"settings": {
