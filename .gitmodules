@@ -1,12 +1,15 @@
-[submodule "toolsnt"]
-	path = toolsnt
-	url = https://github.com/kaliiiiiiiiii/toolsnt
-[submodule "hadris"]
-	path = hadris
-	url = https://github.com/kaliiiiiiiiii/hadris
-[submodule "mkwimg/rdisk"]
-	path = mkwimg/rdisk
-	url = https://github.com/kaliiiiiiiiii/rdisk
 [submodule "mkwimg/nt_native"]
 	path = mkwimg/nt_native
+	url = https://github.com/kaliiiiiiiiii/nt_native
+[submodule "rinb/third_party/toolsnt"]
+	path = rinb/third_party/toolsnt
+	url = https://github.com/kaliiiiiiiiii/toolsnt
+[submodule "mkwimg/third_party/hadris"]
+	path = mkwimg/third_party/hadris
+	url = https://github.com/kaliiiiiiiiii/hadris
+[submodule "mkwimg/third_party/rdisk"]
+	path = mkwimg/third_party/rdisk
+	url = https://github.com/kaliiiiiiiiii/rdisk
+[submodule "mkwimg/third_party/nt_native"]
+	path = mkwimg/third_party/nt_native
 	url = https://github.com/kaliiiiiiiiii/nt_native
