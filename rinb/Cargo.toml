@@ -23,12 +23,12 @@ sha1 = "0.10.6"
 tempfile = "3.21.0"
 uuid = { version = "1.18.0", features = ["v4"] }
 widestring = "1.2.0"
-wimlib = { path = "../toolsnt/wimlib", features = [
+wimlib = { path = "third_party/toolsnt/wimlib", features = [
     "mount",
     "bundled",
 ], default-features = false }
 
-hadris-iso = { path = "../hadris/crates/hadris-iso" }
+# hadris-iso = { path = "../hadris/crates/hadris-iso" }
 mkwimg = { path = "../mkwimg" }
 indicatif = "0.18.0"
 serde_json = "1.0.143"

@@ -1,6 +1,3 @@
-[submodule "mkwimg/nt_native"]
-	path = mkwimg/nt_native
-	url = https://github.com/kaliiiiiiiiii/nt_native
 [submodule "rinb/third_party/toolsnt"]
 	path = rinb/third_party/toolsnt
 	url = https://github.com/kaliiiiiiiiii/toolsnt
