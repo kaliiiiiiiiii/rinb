@@ -16,7 +16,6 @@ use rinb::config::Config;
 use rinb::esd_downloader::WinEsdDownloader;
 
 use rinb::esd::EsdFile;
-use rinb::pack::mkiso;
 
 #[derive(ValueEnum, Debug, Clone)]
 #[clap(rename_all = "kebab_case")]
@@ -108,7 +107,7 @@ fn main() -> Result<(), Error> {
 
 	let outp = Path::new(&args.out);
 	match args.o_type {
-		OutType::ISO => mkiso(&tmp_dir_path, outp)?,
+		OutType::ISO => pack(&tmp_dir_path, outp, PackType::ISO)?,
 		OutType::VHD => pack(&tmp_dir_path, outp, PackType::VHD)?,
 		OutType::IMG => pack(&tmp_dir_path, outp, PackType::IMG)?,
 	}

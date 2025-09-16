@@ -1,9 +1,10 @@
-use anyhow::{Error, Result};
+use anyhow::{Error, Ok, Result};
 use std::{
 	cell::Cell,
 	fmt::Debug,
 	fs::{self, File},
 	path::Path,
+	process::Command,
 };
 
 use clap::ValueEnum;
@@ -23,6 +24,7 @@ use utils::{VhdStream, dir2fat, dir2fatsize};
 #[derive(ValueEnum, Debug, Clone)]
 #[clap(rename_all = "kebab_case")]
 pub enum PackType {
+	ISO,
 	VHD,
 	IMG,
 }
@@ -34,7 +36,10 @@ pub fn pack(dir: &Path, out: &Path, o_type: PackType) -> Result<(), Error> {
 	if out.exists() {
 		fs::remove_file(out)?;
 	}
-	// let mut img_file = File::create(out)?;
+	if matches!(o_type, PackType::ISO) {
+		mkiso(dir, out)?;
+		return Ok(());
+	}
 
 	let part_align = 1 * 1024 * 1024; // 1MiB
 	let block_size = 512;
@@ -71,6 +76,7 @@ pub fn pack(dir: &Path, out: &Path, o_type: PackType) -> Result<(), Error> {
 			file.set_len(est_size)?; // 4GiB
 			img_file = Box::new(file);
 		}
+		_ => panic!(), // no-op
 	}
 
 	let mbr = ProtectiveMBR::with_lb_size(
@@ -146,4 +152,37 @@ pub fn pack(dir: &Path, out: &Path, o_type: PackType) -> Result<(), Error> {
 		dir2fat(&root, dir)?;
 	}
 	Ok(())
+}
+
+fn mkiso(isodir: &Path, outiso: &Path) -> Result<()> {
+	#[cfg(windows)]
+	{
+		let output = Command::new("oscdimg")
+			.args([
+				"-LDevWin_ISO_windows",
+				"-m",
+				"-u2",
+				"-h",
+				&isodir.to_string_lossy(),
+				&outiso.to_string_lossy(),
+				"-pEF",
+				&format!(
+					"-bootdata:2#p0,e,b{0}/boot/etfsboot.com#pEF,e,b{0}/efi/microsoft/boot/efisys.bin",
+					isodir.to_string_lossy()
+				),
+			])
+			.output()?; // capture output
+
+		if output.status.success() {
+			println!("ISO created successfully!");
+		} else {
+			eprintln!("oscdimg failed!");
+			let stderr = String::from_utf8_lossy(&output.stderr);
+			eprintln!("Stderr:\n{}", stderr);
+		}
+
+		Ok(())
+	}
+	#[cfg(not(windows))]
+	todo!()
 }
