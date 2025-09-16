@@ -18,6 +18,7 @@ Options:
 A sample config file can be found at [rinb.json](rinb.json) ([json-schema](rinb_schema.json))
 
 # TODO
+- only split install.esd (& mk non-solid if not already) in pack stage if necceceary & keep mk non-solid in mkdir stage if necceceary
 - support caching built base `install.wim`, `boot.wim` and `base.wim`
 - implement recovering from interrupted downloads over `Accept-Ranges: bytes`, using [reader.chain](https://doc.rust-lang.org/std/io/struct.Chain.html)
 - support other targets than ["x86_64-pc-windows-gnu", "x86_64-unknown-linux-gnu"]
