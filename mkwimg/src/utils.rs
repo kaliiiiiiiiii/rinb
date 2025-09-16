@@ -4,10 +4,10 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-use anyhow::{Error, Result};
+use anyhow::{Error, Result, anyhow};
 use indicatif::{ProgressBar, ProgressStyle};
 
-use fatfs::{Dir, ReadWriteSeek};
+use fatfs::{Dir, ReadWriteSeek, };
 use rdisk::{Disk, ReadAt, WriteAt, vhd::VhdImage};
 
 pub struct VhdStream {
@@ -107,13 +107,18 @@ pub fn dir2fatsize(path: impl AsRef<Path>) -> Result<u64> {
 			let name_len = entry.file_name().to_string_lossy().len();
 			let lfn_entries = (name_len + 12) / 13; // FAT32 long name entries
 			let dir_entry_size = 32 + (lfn_entries as u64 * 32);
+			let fpath = entry.path();
 
 			if meta.is_dir() {
 				// Add directory overhead (like "." and "..")
 				total_size += 32 + dir_entry_size;
-				stack.push(entry.path());
+				
+				stack.push(fpath);
 			} else {
 				let file_size = meta.len();
+				if file_size > u32::MAX as u64 {
+					return  Err(anyhow!("File: {} is bigger than 4GB", fpath.to_string_lossy()));
+				}
 				let clusters = (file_size + cluster_size - 1) / cluster_size;
 				total_size += clusters * cluster_size + dir_entry_size;
 			}
@@ -178,8 +183,10 @@ where
 		} else if path.is_file() {
 			let file_name = path.file_name().unwrap().to_str().unwrap();
 			let mut src_file = fs::File::open(&path)?;
+			if fs::metadata(&path)?.len() > u32::MAX as u64 {
+					return  Err(anyhow!("File: {} is bigger than 4GB", path.to_string_lossy()));
+				}
 			let mut fs_file = parent_dir.create_file(file_name)?;
-
 			let mut buffer = vec![0u8; 4 * 1024 * 1024]; // 4 MB buffer
 			loop {
 				let n = src_file.read(&mut buffer)?;

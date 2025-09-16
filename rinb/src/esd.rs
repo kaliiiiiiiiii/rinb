@@ -1,10 +1,18 @@
-use std::{fs::create_dir_all, num::NonZeroUsize, path::PathBuf, thread};
+use std::{
+	env,
+	fs::{self, create_dir_all},
+	num::NonZeroUsize,
+	path::PathBuf,
+	thread,
+};
 
 use anyhow::{Error, Ok, Result, anyhow};
+use hex::ToHex;
+use uuid::Uuid;
 
 use wimlib::{
-	ExportFlags, ExtractFlags, Image, ImageIndex, OpenFlags, Wim, WimInfo, WimLib, WriteFlags,
-	string::TStr, tstr,
+	CompressionType, ExportFlags, ExtractFlags, Image, ImageIndex, OpenFlags, Wim, WimInfo, WimLib,
+	WriteFlags, string::TStr, tstr,
 };
 
 use crate::utils::ExpectEqual;
@@ -112,16 +120,66 @@ impl<'a> EsdFile<'a> {
 		Ok(install_esd)
 	}
 
-	pub fn write(&self, wim: &Image, path: &PathBuf) -> Result<(), Error> {
+	pub fn write(&self, wim: &Image, path: &PathBuf, max_file_size: &u64) -> Result<(), Error> {
 		wim.write(
 			&TStr::from_path(path).unwrap(),
 			WriteFlags::empty(),
 			self.n_threads,
 		)?;
+
+		// split wim if needed
+		if &path.metadata()?.len() > max_file_size {
+			let tmppath: &PathBuf = &env::temp_dir().join(format!(
+				"rinb_tmp_file_{}.wim",
+				Uuid::new_v4().encode_hex::<String>()
+			));
+
+			let wim = self
+				.wiml
+				.open_wim(&TStr::from_path(&path).unwrap(), OpenFlags::empty())?;
+
+			// create new non-solid wim (WIMs inside esd are solid by default)
+			// solid wims cannot be split
+			// windows (probably) doesn't support lzms + non-solid, nor can wimlib convert to non-solid lzms
+			// => must use slow (compression) lzx
+			wim.set_output_compression_type(CompressionType::Lzx)?; // non-solid
+			wim.set_output_chunk_size(32 * 1024)?; // 32k chunk size
+			wim.select_all_images().write(
+				&TStr::from_path(&tmppath).unwrap(),
+				WriteFlags::empty(),
+				self.n_threads,
+			)?;
+
+			// split new wim (ensuring cleanup)
+			let result = (|| -> Result<()> {
+				drop(wim);
+				fs::remove_file(&path)?;
+				// non-solid wim is now at tmppath
+				let wim = self
+					.wiml
+					.open_wim(&TStr::from_path(&tmppath).unwrap(), OpenFlags::empty())?;
+				// ~90% of max size to allow for some padding, ~3.5 MiB. on Win11 5.4 GiB observed
+				wim.split(
+					&TStr::from_path(&path.with_extension("swm")).unwrap(),
+					(*max_file_size * 9) / 10,
+					WriteFlags::empty(),
+				)?;
+				drop(wim);
+				Ok(())
+			})();
+			// ensure cleanup
+			fs::remove_file(&tmppath)?;
+			result?;
+		}
 		Ok(())
 	}
 
-	pub fn install_dir(&self, target_dir: &PathBuf, edition: &str) -> Result<(), Error> {
+	pub fn install_dir(
+		&self,
+		target_dir: &PathBuf,
+		edition: &str,
+		max_file_size: &u64,
+	) -> Result<(), Error> {
 		create_dir_all(target_dir.join("sources"))?;
 
 		let install_esd_path = target_dir.join("sources/install.esd");
@@ -131,14 +189,14 @@ impl<'a> EsdFile<'a> {
 		let boot_wim = self.boot()?;
 		// let boot_wim = self.win_pe()?; // write win_pe for testing instead
 
-		self.write(&boot_wim.select_all_images(), &boot_wim_path)?;
+		self.write(&boot_wim.select_all_images(), &boot_wim_path, max_file_size)?;
 
 		// write install.esd to dism
 		let install_esd = match self.install(edition)? {
 			Some(esd) => esd,
 			None => return Err(anyhow!("install.esd not found in image")),
 		};
-		self.write(&install_esd, &install_esd_path)?;
+		self.write(&install_esd, &install_esd_path, max_file_size)?;
 
 		// extract base image
 		let base_image = self.base()?;

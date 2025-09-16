@@ -1,5 +1,5 @@
 use anyhow::{Error, Result, anyhow};
-use std::{env, fs, io, path::PathBuf};
+use std::{env, fs::{self, File}, io, path::PathBuf};
 use uuid::Uuid;
 
 pub struct TmpDir {

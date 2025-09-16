@@ -103,7 +103,8 @@ fn main() -> Result<(), Error> {
 	// create install dir from esd
 	let esdf = EsdFile::new(&esd)?;
 	// println!("{}", esdf.xml()?);
-	esdf.install_dir(&tmp_dir_path, &config.edition)?;
+	fs::remove_dir_all(&tmp_dir_path)?; // we don't want left-over extra files
+	esdf.install_dir(&tmp_dir_path, &config.edition, &(u32::MAX as u64))?;
 
 	let outp = Path::new(&args.out);
 	match args.o_type {
@@ -112,5 +113,5 @@ fn main() -> Result<(), Error> {
 		OutType::IMG => pack(&tmp_dir_path, outp, PackType::IMG)?,
 	}
 	println!("Building took {:.2?}", now.elapsed());
-	Ok(())
+	 Ok(())
 }
