@@ -10,6 +10,8 @@
     - [ ] make default
     - [ ] no first startup
 - [ ] mysys2
+- [ ] cargo/rust
+- [ ] python
 - [ ] git
     - [ ] configure `use.name` & `user.email`
 - [ ] Xournal++
