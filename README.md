@@ -17,6 +17,11 @@ Options:
 ```
 A sample config file can be found at [rinb.json](rinb.json) ([json-schema](rinb_schema.json))
 
+### Build stages
+1. Download image from microsoft and create install dir
+2. Customize installation based on install dir
+3. Build `ISO` or `VHD` OR `IMG` from install dir.
+
 # TODO
 - only split install.esd (& mk non-solid if not already) in pack stage if necceceary & keep mk non-solid in mkdir stage if necceceary
 - support caching built base `install.wim`, `boot.wim` and `base.wim`

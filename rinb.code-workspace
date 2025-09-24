@@ -43,6 +43,8 @@
 		"recommendations": [
 			"ms-vscode.cpptools",
 			"rust-lang.rust-analyzer",
+			"bierner.markdown-preview-github-styles",
+			"vadimcn.vscode-lldb"
 		]
 	},
 	"launch": {
