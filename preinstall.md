@@ -4,16 +4,19 @@
 
 # Software
 
-- [ ] vscode
-    - [ ] autoinstall extensions
+- dev
+    - [ ] vscode
+        - [ ] autoinstall extensions
+        - [ ] mysys2
+    - [ ] cargo/rust
+    - [ ] python
+    - nodeJs
+    - chokolatey
+    - [ ] git
+        - [ ] configure `use.name` & `user.email`
 - [ ] chrome
     - [ ] make default
     - [ ] no first startup
-- [ ] mysys2
-- [ ] cargo/rust
-- [ ] python
-- [ ] git
-    - [ ] configure `use.name` & `user.email`
 - [ ] Xournal++
     - [ ] configure stylus delete area=>line
     - [ ] darkmode
